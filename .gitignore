@@ -1,0 +1,22 @@
+node_modules/
+.node_modules_stale/
+.next/
+dist/
+coverage/
+.runtime/
+*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+!frontend/.env.local.example
+
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+npm-debug.log*
+
+# Local database storage
+db_data/
+docs

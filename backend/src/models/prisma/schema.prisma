@@ -1,0 +1,228 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+}
+
+enum ContentLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum LessonStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model User {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  email           String   @unique
+  passwordHash    String?
+  displayName     String
+  avatarUrl       String?
+  role            UserRole @default(STUDENT)
+  status          UserStatus @default(PENDING_VERIFICATION)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  refreshTokens          RefreshToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  lessonProgress         LessonProgress[]
+  vocabularyProgress     VocabularyProgress[]
+  notes                  Note[]
+  savedVocabularyNotes   SavedVocabularyNote[]
+  flashcards             Flashcard[]
+
+  @@index([status])
+}
+
+model Note {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  ownerId     String   @db.ObjectId
+  title       String
+  contentHtml String
+  searchText  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  savedVocabulary SavedVocabularyNote?
+
+  @@index([ownerId, updatedAt])
+  @@index([ownerId, title])
+}
+
+model SavedVocabularyNote {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  ownerId      String     @db.ObjectId
+  vocabularyId String     @db.ObjectId
+  noteId       String     @unique @db.ObjectId
+  lessonId     String?    @db.ObjectId
+  createdAt    DateTime   @default(now())
+  owner        User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  vocabulary   Vocabulary @relation(fields: [vocabularyId], references: [id], onDelete: Cascade)
+  note         Note       @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, vocabularyId])
+  @@index([ownerId, createdAt])
+}
+
+model RefreshToken {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  tokenHash  String    @unique
+  userId     String    @db.ObjectId
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  tokenHash  String    @unique
+  userId     String    @db.ObjectId
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Topic {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  slug          String       @unique
+  description   String
+  level         ContentLevel @default(BEGINNER)
+  imageUrl      String?
+  imagePublicId String?
+  order         Int          @default(0)
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  vocabularies  Vocabulary[]
+  lessons       Lesson[]
+
+  @@index([level, isActive, order])
+}
+
+model Vocabulary {
+  id              String       @id @default(auto()) @map("_id") @db.ObjectId
+  topicId         String       @db.ObjectId
+  word            String
+  meaning         String
+  meaningVi       String?
+  pronunciation   String?
+  partOfSpeech    String?
+  exampleSentence String?
+  imageUrl        String?
+  imagePublicId   String?
+  audioUrl        String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  topic           Topic        @relation(fields: [topicId], references: [id])
+  lessonItems     LessonItem[]
+  progress        VocabularyProgress[]
+  savedNotes      SavedVocabularyNote[]
+  flashcards      Flashcard[]
+
+  @@unique([topicId, word])
+}
+
+model Lesson {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  topicId     String       @db.ObjectId
+  title       String
+  slug        String       @unique
+  description String
+  level       ContentLevel @default(BEGINNER)
+  status      LessonStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  topic       Topic        @relation(fields: [topicId], references: [id])
+  items       LessonItem[]
+  progress    LessonProgress[]
+  vocabularyProgress VocabularyProgress[]
+
+  @@index([topicId, status])
+}
+
+model LessonItem {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  lessonId     String     @db.ObjectId
+  vocabularyId String     @db.ObjectId
+  order        Int
+  lesson       Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  vocabulary   Vocabulary @relation(fields: [vocabularyId], references: [id])
+
+  @@unique([lessonId, vocabularyId])
+  @@unique([lessonId, order])
+  @@index([vocabularyId])
+}
+
+model LessonProgress {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  lessonId    String    @db.ObjectId
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson      Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId, completedAt])
+}
+
+model VocabularyProgress {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String     @db.ObjectId
+  lessonId     String     @db.ObjectId
+  vocabularyId String     @db.ObjectId
+  completedAt  DateTime   @default(now())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson       Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  vocabulary   Vocabulary @relation(fields: [vocabularyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId, vocabularyId])
+  @@index([userId, lessonId])
+  @@index([userId, vocabularyId])
+}
+
+model Flashcard {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String    @db.ObjectId
+  vocabularyId   String    @db.ObjectId
+  nextReviewAt   DateTime  @default(now())
+  lastReviewedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vocabulary     Vocabulary @relation(fields: [vocabularyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, vocabularyId])
+  @@index([userId, nextReviewAt])
+}
+
