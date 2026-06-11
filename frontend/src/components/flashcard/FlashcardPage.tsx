@@ -12,6 +12,29 @@ import { useAuthStore } from "@/stores/auth.store";
 
 type FlashcardView = "study" | "collection";
 
+const renderHighlightedExample = (sentence: string, word: string) => {
+  if (!sentence || !word) return sentence;
+
+  const escapedWord = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+  const baseWordPattern = word.endsWith("e")
+    ? escapedWord.slice(0, -1) + "e?"
+    : escapedWord;
+
+  const regex = new RegExp(
+    `(\\b${baseWordPattern}(?:s|es|d|ed|ing|ion|ions)?\\b)`,
+    "gi"
+  );
+
+  const parts = sentence.split(regex);
+  return (
+    <>
+      {parts.map((part, index) =>
+        index % 2 === 1 ? <strong key={index}>{part}</strong> : part
+      )}
+    </>
+  );
+};
+
 export default function FlashcardPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -418,7 +441,7 @@ export default function FlashcardPage() {
                         {currentDueCard.vocabulary.exampleSentence && (
                           <div className="example-section">
                             <p className="eyebrow-label">Example sentence</p>
-                            <blockquote>&ldquo;{currentDueCard.vocabulary.exampleSentence}&rdquo;</blockquote>
+                            <blockquote>&ldquo;{renderHighlightedExample(currentDueCard.vocabulary.exampleSentence, currentDueCard.vocabulary.word)}&rdquo;</blockquote>
                           </div>
                         )}
                       </div>
@@ -757,7 +780,7 @@ export default function FlashcardPage() {
                           {currentModalCard.vocabulary.exampleSentence && (
                             <div className="example-section">
                               <p className="eyebrow-label">Example sentence</p>
-                              <blockquote>&ldquo;{currentModalCard.vocabulary.exampleSentence}&rdquo;</blockquote>
+                              <blockquote>&ldquo;{renderHighlightedExample(currentModalCard.vocabulary.exampleSentence, currentModalCard.vocabulary.word)}&rdquo;</blockquote>
                             </div>
                           )}
                         </div>

@@ -9,6 +9,7 @@ import { ContentModule } from './routes/admin.routes';
 import { LessonModule } from './routes/lesson.routes';
 import { NoteModule } from './routes/note.routes';
 import { FlashcardModule } from './routes/flashcard.routes';
+import { GameModule } from './routes/game.routes';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { FlashcardModule } from './routes/flashcard.routes';
     LessonModule,
     NoteModule,
     FlashcardModule,
+    GameModule,
   ],
   controllers: [AppController],
   providers: [AppService],

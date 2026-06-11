@@ -48,6 +48,7 @@ model User {
   notes                  Note[]
   savedVocabularyNotes   SavedVocabularyNote[]
   flashcards             Flashcard[]
+  gameScores             GameScore[]
 
   @@index([status])
 }
@@ -120,6 +121,7 @@ model Topic {
   updatedAt     DateTime     @updatedAt
   vocabularies  Vocabulary[]
   lessons       Lesson[]
+  gameScores    GameScore[]
 
   @@index([level, isActive, order])
 }
@@ -224,5 +226,27 @@ model Flashcard {
 
   @@unique([userId, vocabularyId])
   @@index([userId, nextReviewAt])
+}
+
+enum GameDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model GameScore {
+  id         String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String         @db.ObjectId
+  topicId    String?        @db.ObjectId
+  difficulty GameDifficulty
+  score      Int
+  timeSpent  Int
+  createdAt  DateTime       @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic? @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId, difficulty, score])
+  @@index([userId, score])
 }
 
