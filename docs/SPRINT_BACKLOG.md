@@ -89,17 +89,25 @@ Acceptance:
 - grading updates the next review date atomically
 - only due cards appear in the default review queue
 
-## Sprint 6 - Matching Game
+## Sprint 6 - Vocabulary Games and Writing Practice
 
 Deliver:
 
 - server-created game sessions, timed matching, score submission, leaderboard
 - difficulty and topic selection
+- writing practice sourced from the learner's saved flashcards
+- searchable single-card and bulk selection before starting a practice session
+- listening and meaning prompts with typed English answers
+- immediate spelling feedback and spaced-review updates
 
 Acceptance:
 
 - server validates elapsed time and score inputs
 - duplicate result submissions are rejected
+- answers are checked case-insensitively after whitespace normalization
+- correct answers schedule a 5-day review and incorrect/skipped answers a
+  1-day review
+- users cannot practice or reveal another user's flashcards
 
 ## Sprint 7 - AI Tutor
 

@@ -11,6 +11,7 @@ export const routes = {
     courses: "/courses",
     lessons: "/lessons",
     flashcards: "/flashcards",
+    writingPractice: "/flashcards/practice",
     notes: "/notes",
     chatbot: "/chatbot",
     vocabulary: "/vocabulary",

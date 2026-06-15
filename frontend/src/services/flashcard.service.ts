@@ -27,6 +27,15 @@ export interface Flashcard {
 }
 
 export type ReviewDifficulty = "easy" | "medium" | "hard";
+export type WritingPracticeMode = "listening" | "meaning";
+
+export interface WritingPracticeResult {
+  correct: boolean;
+  expectedAnswer: string;
+  mode: WritingPracticeMode;
+  difficulty: ReviewDifficulty;
+  flashcard: Flashcard;
+}
 
 async function getAccessToken(): Promise<string> {
   const state = useAuthStore.getState();
@@ -89,6 +98,18 @@ export const flashcardApi = {
       method: "POST",
       body: JSON.stringify({ difficulty }),
     }),
+  submitWritingPractice: (
+    id: string,
+    mode: WritingPracticeMode,
+    answer: string,
+  ) =>
+    flashcardRequest<WritingPracticeResult>(
+      `/flashcards/${id}/writing-practice`,
+      {
+        method: "POST",
+        body: JSON.stringify({ mode, answer }),
+      },
+    ),
   makeDue: (ids: string[]) =>
     flashcardRequest<{ success: boolean }>("/flashcards/make-due", {
       method: "POST",
@@ -97,4 +118,3 @@ export const flashcardApi = {
   delete: (id: string) =>
     flashcardRequest<void>(`/flashcards/${id}`, { method: "DELETE" }),
 };
-

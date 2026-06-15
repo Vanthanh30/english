@@ -14,7 +14,10 @@ import { JwtAuthGuard } from '../middlewares/auth.middleware';
 import type { AuthenticatedUser } from '../middlewares/auth.middleware';
 import { CurrentUser } from '../middlewares/decorators/current-user.decorator';
 import { MongoIdPipe } from '../middlewares/validation.middleware';
-import { ReviewFlashcardDto } from './dto/flashcard/flashcard.dto';
+import {
+  ReviewFlashcardDto,
+  SubmitWritingPracticeDto,
+} from './dto/flashcard/flashcard.dto';
 
 @Controller('flashcards')
 @UseGuards(JwtAuthGuard)
@@ -48,6 +51,20 @@ export class FlashcardController {
     return this.flashcards.review(user.id, id, input.difficulty);
   }
 
+  @Post(':id/writing-practice')
+  submitWritingPractice(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', MongoIdPipe) id: string,
+    @Body() input: SubmitWritingPracticeDto,
+  ) {
+    return this.flashcards.submitWritingPractice(
+      user.id,
+      id,
+      input.mode,
+      input.answer,
+    );
+  }
+
   @Post('make-due')
   @HttpCode(HttpStatus.OK)
   async makeDue(
@@ -67,4 +84,3 @@ export class FlashcardController {
     return this.flashcards.delete(user.id, id);
   }
 }
-

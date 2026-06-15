@@ -68,6 +68,8 @@ API contracts are documented in [docs/AUTH_API.md](docs/AUTH_API.md) and
 endpoints are documented in [docs/LEARNING_API.md](docs/LEARNING_API.md).
 Personal note endpoints are documented in
 [docs/NOTES_API.md](docs/NOTES_API.md).
+Flashcard review and writing-practice endpoints are documented in
+[docs/FLASHCARD_API.md](docs/FLASHCARD_API.md).
 
 Development accounts and Sprint 1-4 sample content can be created with:
 

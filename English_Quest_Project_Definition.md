@@ -231,35 +231,49 @@ Spaced repetition learning.
 
 ---
 
-# Sprint 6 - Vocabulary Matching Game
+# Sprint 6 - Vocabulary Games & Writing Practice
 
 ## Role
 Student
 
 ## Input
-- Topic
+- Topic or saved flashcards
 - Difficulty
+- Writing prompt mode: listening or meaning
+- Typed English answer
 
 ## Output
 - Score
 - Ranking
+- Correct/incorrect spelling feedback
+- Updated flashcard review schedule
 
 ## Context
-Gamification module.
+Gamification and active-recall module. Students reinforce saved flashcards by
+matching vocabulary and by writing the English word after hearing it or reading
+its meaning.
 
 ## Workflow
-1. Start Game
-2. Match Vocabulary
-3. Timer Count Down
-4. Submit Result
+1. Select matching game or writing practice
+2. Search and select individual saved flashcards
+3. Match vocabulary, or listen/read the prompt
+4. Type and submit the English word
+5. Receive immediate feedback
+6. Update the spaced-review schedule
+7. Submit game result and show ranking
 
 ## Rules
-- Time limited
-- Score calculated
+- Matching games are time limited and scored
+- Writing answers ignore letter case and repeated spaces
+- Correct writing answer schedules review in 5 days
+- Incorrect or skipped answer schedules review in 1 day
+- Only the flashcard owner can submit an answer
 
 ## Style
 - Fun
 - Competitive
+- Focused
+- Encourages active recall
 
 ---
 

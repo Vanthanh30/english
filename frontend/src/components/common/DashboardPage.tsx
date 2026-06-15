@@ -213,6 +213,22 @@ export default function DashboardPage() {
               </span>
             </Link>
 
+            <Link href="/flashcards/practice" className="dashboard-card tool-card">
+              <div className="tool-card-header">
+                <span className="tool-card-icon">Aa</span>
+                <span className="tool-card-badge info">Sprint 6</span>
+              </div>
+              <div>
+                <h3>Writing Practice</h3>
+                <p>
+                  Listen to pronunciation or read a meaning, then write the English word from memory.
+                </p>
+              </div>
+              <span className="tool-card-footer">
+                Start writing &rarr;
+              </span>
+            </Link>
+
             <Link href="/notes" className="dashboard-card tool-card">
               <div className="tool-card-header">
                 <span className="tool-card-icon">📝</span>

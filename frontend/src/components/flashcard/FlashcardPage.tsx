@@ -332,6 +332,22 @@ export default function FlashcardPage() {
           </span>
           <b className="badge-total">{allCards.length}</b>
         </button>
+
+        <button
+          type="button"
+          onClick={() => router.push("/flashcards/practice")}
+        >
+          <span className="flashcards-view-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zM19.5 7.125L16.875 4.5M18 14.25v4.125A2.625 2.625 0 0115.375 21H5.625A2.625 2.625 0 013 18.375V8.625A2.625 2.625 0 015.625 6H9.75" />
+            </svg>
+          </span>
+          <span>
+            <strong>Writing Practice</strong>
+            <small>Listen or read, then spell the word</small>
+          </span>
+          <b className="badge-total">New</b>
+        </button>
       </nav>
 
       {view === "study" ? (
@@ -834,5 +850,4 @@ export default function FlashcardPage() {
     </main>
   );
 }
-
 

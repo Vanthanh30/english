@@ -26,3 +26,13 @@ export interface FlashcardWithVocabulary extends FlashcardModel {
 }
 
 export type ReviewDifficulty = 'easy' | 'medium' | 'hard';
+
+export type WritingPracticeMode = 'listening' | 'meaning';
+
+export interface WritingPracticeResult {
+  correct: boolean;
+  expectedAnswer: string;
+  mode: WritingPracticeMode;
+  difficulty: ReviewDifficulty;
+  flashcard: FlashcardWithVocabulary;
+}

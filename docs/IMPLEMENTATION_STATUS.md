@@ -78,6 +78,26 @@ learning screens.
   repositories, routes, and services
 - NestJS retained instead of rewriting the working API to Express
 
+## Sprint 5 - Complete
+
+- saved vocabulary flashcard collection
+- due-review queue and manual card review
+- hard, medium, and easy scheduling rules
+- bulk study and collection filtering
+
+## Sprint 6 - Complete
+
+- topic and custom-flashcard matching games
+- classic memory-grid and sequential speed modes
+- difficulty-based timers, scoring, and topic leaderboards
+- flashcard writing practice at `/flashcards/practice`
+- searchable flashcard selection for custom writing-practice sessions
+- listening prompts using uploaded audio or browser speech synthesis
+- Vietnamese/English meaning prompts
+- server-side spelling checks with case and whitespace normalization
+- correct answers scheduled as easy; incorrect and skipped answers as hard
+- session accuracy, missed-word summary, and dashboard navigation
+
 ## Next
 
-Sprint 5 implements saved vocabulary, flashcards, and spaced review.
+Sprint 7 implements the AI English tutor and conversation history.
