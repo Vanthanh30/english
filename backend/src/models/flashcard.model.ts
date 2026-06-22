@@ -1,3 +1,9 @@
+export interface TopicModel {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export interface VocabularyModel {
   id: string;
   topicId: string;
@@ -9,6 +15,7 @@ export interface VocabularyModel {
   exampleSentence: string | null;
   imageUrl: string | null;
   audioUrl: string | null;
+  topic?: TopicModel | null;
 }
 
 export interface FlashcardModel {

@@ -10,6 +10,9 @@ import { LessonModule } from './routes/lesson.routes';
 import { NoteModule } from './routes/note.routes';
 import { FlashcardModule } from './routes/flashcard.routes';
 import { GameModule } from './routes/game.routes';
+import { ReadingModule } from './routes/reading.routes';
+import { ChatbotModule } from './routes/chatbot.routes';
+import { VisionModule } from './routes/vision.routes';
 
 @Module({
   imports: [
@@ -46,6 +49,7 @@ import { GameModule } from './routes/game.routes';
         CLOUDINARY_CLOUD_NAME: Joi.string().required(),
         CLOUDINARY_API_KEY: Joi.string().required(),
         CLOUDINARY_API_SECRET: Joi.string().required(),
+        GEMINI_API_KEY: Joi.string().required(),
       }),
       validationOptions: {
         allowUnknown: true,
@@ -59,6 +63,9 @@ import { GameModule } from './routes/game.routes';
     NoteModule,
     FlashcardModule,
     GameModule,
+    ReadingModule,
+    ChatbotModule,
+    VisionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

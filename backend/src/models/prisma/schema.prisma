@@ -49,6 +49,11 @@ model User {
   savedVocabularyNotes   SavedVocabularyNote[]
   flashcards             Flashcard[]
   gameScores             GameScore[]
+  readingItems           ReadingItem[]
+  vocabularyHighlights   VocabularyHighlight[]
+  readingNotes           ReadingNote[]
+  chatSessions           ChatSession[]
+  visionHistories        VisionHistory[]
 
   @@index([status])
 }
@@ -249,4 +254,136 @@ model GameScore {
   @@index([topicId, difficulty, score])
   @@index([userId, score])
 }
+
+enum SourceType {
+  URL
+  PDF
+  DOCX
+  TXT
+}
+
+enum ReadingStatus {
+  NOT_STARTED
+  READING
+  COMPLETED
+}
+
+enum HighlightColor {
+  YELLOW
+  GREEN
+  RED
+}
+
+enum ReadingNoteType {
+  VOCABULARY
+  GRAMMAR
+  SUMMARY
+  PERSONAL
+}
+
+model ReadingItem {
+  id               String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String         @db.ObjectId
+  title            String
+  sourceType       SourceType
+  sourceUrl        String?
+  content          String
+  wordCount        Int
+  status           ReadingStatus  @default(NOT_STARTED)
+  bookmarkPosition Float          @default(0.0)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  highlights       VocabularyHighlight[]
+  notes            ReadingNote[]
+
+  @@index([userId, status])
+}
+
+model VocabularyHighlight {
+  id             String         @id @default(auto()) @map("_id") @db.ObjectId
+  readingItemId  String         @db.ObjectId
+  userId         String         @db.ObjectId
+  word           String
+  color          HighlightColor
+  charOffset     Int
+  createdAt      DateTime       @default(now())
+
+  readingItem    ReadingItem    @relation(fields: [readingItemId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([readingItemId, userId])
+  @@unique([readingItemId, userId, word, charOffset])
+}
+
+model ReadingNote {
+  id             String          @id @default(auto()) @map("_id") @db.ObjectId
+  readingItemId  String          @db.ObjectId
+  userId         String          @db.ObjectId
+  noteType       ReadingNoteType
+  content        String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  readingItem    ReadingItem     @relation(fields: [readingItemId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([readingItemId, userId])
+}
+
+model ChatSession {
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String        @db.ObjectId
+  title     String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  ChatMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model ChatMessage {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId String      @db.ObjectId
+  role      String      // "user" | "model"
+  content   String
+  createdAt DateTime    @default(now())
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+}
+
+model VisionHistory {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String       @db.ObjectId
+  imageUrl      String
+  imagePublicId String?
+  createdAt     DateTime     @default(now())
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  words         VisionWord[]
+
+  @@index([userId, createdAt])
+}
+
+model VisionWord {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  historyId       String        @db.ObjectId
+  word            String
+  meaning         String
+  meaningVi       String?
+  pronunciation   String?
+  partOfSpeech    String?
+  exampleSentence String?
+  saved           Boolean       @default(false)
+  x               Int?
+  y               Int?
+  history         VisionHistory @relation(fields: [historyId], references: [id], onDelete: Cascade)
+
+  @@index([historyId])
+}
+
+
+
 

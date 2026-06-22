@@ -2,6 +2,12 @@ import { API_URL } from "./api";
 import { authApi } from "./auth.service";
 import { useAuthStore } from "@/stores/auth.store";
 
+export interface Topic {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export interface Vocabulary {
   id: string;
   topicId: string;
@@ -13,6 +19,7 @@ export interface Vocabulary {
   exampleSentence: string | null;
   imageUrl: string | null;
   audioUrl: string | null;
+  topic?: Topic | null;
 }
 
 export interface Flashcard {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   flashcardApi,
@@ -57,6 +57,11 @@ export default function FlashcardPage() {
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
   const [bulkStudyCards, setBulkStudyCards] = useState<Flashcard[]>([]);
   const [bulkStudyIndex, setBulkStudyIndex] = useState(0);
+  
+  const [selectedFolderId, setSelectedFolderId] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const cardsPerPage = 9;
+  const [showAllFolders, setShowAllFolders] = useState(false);
 
 
 
@@ -159,7 +164,7 @@ export default function FlashcardPage() {
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleDateString(undefined, {
+    return d.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -176,9 +181,74 @@ export default function FlashcardPage() {
   };
 
   const getDifficultyCount = (diff: "all" | "new" | "hard" | "medium" | "easy") => {
-    if (diff === "all") return allCards.length;
-    return allCards.filter((c) => getCardDifficulty(c) === diff).length;
+    return allCards.filter((c) => {
+      if (selectedFolderId !== "all") {
+        const topicId = c.vocabulary.topic?.id || "uncategorized";
+        if (topicId !== selectedFolderId) return false;
+      }
+      if (diff === "all") return true;
+      return getCardDifficulty(c) === diff;
+    }).length;
   };
+
+  const folders = useMemo(() => {
+    const map = new Map<string, { name: string; slug: string; count: number }>();
+    allCards.forEach((card) => {
+      const topic = card.vocabulary.topic;
+      const topicId = topic?.id || "uncategorized";
+      const topicName = topic?.name || "General";
+      const topicSlug = topic?.slug || "uncategorized";
+
+      const existing = map.get(topicId);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        map.set(topicId, {
+          name: topicName,
+          slug: topicSlug,
+          count: 1,
+        });
+      }
+    });
+
+    return Array.from(map.entries()).map(([id, info]) => ({
+      id,
+      ...info,
+    }));
+  }, [allCards]);
+
+  const filteredCards = allCards.filter((c) => {
+    const matchesSearch =
+      c.vocabulary.word.toLowerCase().includes(search.toLowerCase()) ||
+      c.vocabulary.meaning.toLowerCase().includes(search.toLowerCase()) ||
+      (c.vocabulary.meaningVi &&
+        c.vocabulary.meaningVi.toLowerCase().includes(search.toLowerCase()));
+
+    if (!matchesSearch) return false;
+
+    if (difficultyFilter !== "all" && getCardDifficulty(c) !== difficultyFilter) {
+      return false;
+    }
+
+    if (selectedFolderId !== "all") {
+      const topicId = c.vocabulary.topic?.id || "uncategorized";
+      if (topicId !== selectedFolderId) return false;
+    }
+
+    return true;
+  });
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, difficultyFilter, selectedFolderId]);
+
+  const totalPages = Math.ceil(filteredCards.length / cardsPerPage);
+
+  const paginatedCards = useMemo(() => {
+    const startIndex = (currentPage - 1) * cardsPerPage;
+    return filteredCards.slice(startIndex, startIndex + cardsPerPage);
+  }, [filteredCards, currentPage]);
 
   const handleCloseModal = () => {
     setActiveStudyCard(null);
@@ -227,19 +297,6 @@ export default function FlashcardPage() {
       setError(reason instanceof Error ? reason.message : "Unable to record review");
     }
   };
-
-
-  const filteredCards = allCards.filter((c) => {
-    const matchesSearch =
-      c.vocabulary.word.toLowerCase().includes(search.toLowerCase()) ||
-      c.vocabulary.meaning.toLowerCase().includes(search.toLowerCase()) ||
-      (c.vocabulary.meaningVi &&
-        c.vocabulary.meaningVi.toLowerCase().includes(search.toLowerCase()));
-    
-    if (!matchesSearch) return false;
-    if (difficultyFilter === "all") return true;
-    return getCardDifficulty(c) === difficultyFilter;
-  });
 
   const handleBulkMakeDue = async () => {
     if (selectedCardIds.length === 0) return;
@@ -331,22 +388,6 @@ export default function FlashcardPage() {
             <small>Manage card collection</small>
           </span>
           <b className="badge-total">{allCards.length}</b>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => router.push("/flashcards/practice")}
-        >
-          <span className="flashcards-view-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zM19.5 7.125L16.875 4.5M18 14.25v4.125A2.625 2.625 0 0115.375 21H5.625A2.625 2.625 0 013 18.375V8.625A2.625 2.625 0 015.625 6H9.75" />
-            </svg>
-          </span>
-          <span>
-            <strong>Writing Practice</strong>
-            <small>Listen or read, then spell the word</small>
-          </span>
-          <b className="badge-total">New</b>
         </button>
       </nav>
 
@@ -565,6 +606,54 @@ export default function FlashcardPage() {
             </div>
           </header>
 
+          {folders.length > 0 && (
+            <div className="folders-section">
+              <div className="folders-header-row">
+                <h3 className="folders-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4 text-green-700">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                  </svg>
+                  <span>Vocabulary Folders</span>
+                </h3>
+                {folders.length > 4 && (
+                  <button 
+                    type="button" 
+                    className="btn-toggle-folders"
+                    onClick={() => setShowAllFolders(prev => !prev)}
+                  >
+                    {showAllFolders ? "Show Less" : `Show All (${folders.length + 1})`}
+                  </button>
+                )}
+              </div>
+              <div className="folders-grid">
+                <div 
+                  className={`folder-card ${selectedFolderId === "all" ? "active" : ""}`}
+                  onClick={() => setSelectedFolderId("all")}
+                >
+                  <div className="folder-icon-wrapper">📂</div>
+                  <div className="folder-info">
+                    <span className="folder-name">All Vocabularies</span>
+                    <span className="folder-count">{allCards.length} cards</span>
+                  </div>
+                </div>
+
+                {(showAllFolders ? folders : folders.slice(0, 4)).map((folder) => (
+                  <div 
+                    key={folder.id}
+                    className={`folder-card ${selectedFolderId === folder.id ? "active" : ""}`}
+                    onClick={() => setSelectedFolderId(folder.id)}
+                  >
+                    <div className="folder-icon-wrapper">📁</div>
+                    <div className="folder-info">
+                      <span className="folder-name">{folder.name}</span>
+                      <span className="folder-count">{folder.count} cards</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {selectedCardIds.length > 0 && (
             <div className="bulk-actions-bar">
               <span>Selected <strong>{selectedCardIds.length}</strong> flashcards to study</span>
@@ -594,9 +683,6 @@ export default function FlashcardPage() {
             </div>
           )}
 
-
-
-
           {collectionLoading ? (
             <div className="collection-loading-state">
               <p>Loading flashcards collection...</p>
@@ -613,100 +699,170 @@ export default function FlashcardPage() {
               )}
             </div>
           ) : (
-            <div className="collection-grid">
-              {filteredCards.map((card) => (
-                <article className="collection-card" key={card.id}>
-                  <div className="card-header">
-                    <div className="card-tags">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedCardIds.includes(card.id)}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          setSelectedCardIds(prev => 
-                            prev.includes(card.id) 
-                              ? prev.filter(id => id !== card.id) 
-                              : [...prev, card.id]
+            <>
+              <div className="collection-grid">
+                {paginatedCards.map((card) => (
+                  <article className="collection-card" key={card.id}>
+                    <div className="card-header">
+                      <div className="card-tags">
+                        <input 
+                          type="checkbox" 
+                          checked={selectedCardIds.includes(card.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            setSelectedCardIds(prev => 
+                              prev.includes(card.id) 
+                                ? prev.filter(id => id !== card.id) 
+                                : [...prev, card.id]
+                            );
+                          }}
+                          className="card-select-checkbox"
+                        />
+                        <span className="card-pos">{card.vocabulary.partOfSpeech ?? "vocab"}</span>
+                        {(() => {
+                          const diff = getCardDifficulty(card);
+                          return (
+                            <span className={`difficulty-badge ${diff}`}>
+                              {diff === "easy" && "Easy"}
+                              {diff === "medium" && "Medium"}
+                              {diff === "hard" && "Hard"}
+                              {diff === "new" && "New"}
+                            </span>
                           );
-                        }}
-                        className="card-select-checkbox"
-                      />
-                      <span className="card-pos">{card.vocabulary.partOfSpeech ?? "vocab"}</span>
-                      {(() => {
-                        const diff = getCardDifficulty(card);
-                        return (
-                          <span className={`difficulty-badge ${diff}`}>
-                            {diff === "easy" && "Easy"}
-                            {diff === "medium" && "Medium"}
-                            {diff === "hard" && "Hard"}
-                            {diff === "new" && "New"}
-                          </span>
-                        );
-                      })()}
-                    </div>
+                        })()}
+                      </div>
 
-                    <button 
-                      type="button" 
-                      onClick={() => handleDelete(card.id)}
-                      className="btn-delete-card"
-                      title="Remove from collection"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="card-main">
-                    <div className="word-row">
-                      <h3>{card.vocabulary.word}</h3>
                       <button 
                         type="button" 
-                        onClick={() => playAudio(card.vocabulary.word, card.vocabulary.audioUrl)}
-                        className="btn-small-audio"
+                        onClick={() => handleDelete(card.id)}
+                        className="btn-delete-card"
+                        title="Remove from collection"
                       >
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                          <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.063.922-2.063 2.063v4.875c0 1.141.922 2.062 2.063 2.062h1.932l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM17.56 12a5.3 5.3 0 01-2.06 4.19.75.75 0 01-.94-1.17 3.8 3.8 0 001.5-3.02 3.8 3.8 0 00-1.5-3.02.75.75 0 01.94-1.17A5.3 5.3 0 0117.56 12z" />
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     </div>
-                    {card.vocabulary.pronunciation && (
-                      <p className="card-pronunciation">/{card.vocabulary.pronunciation}/</p>
-                    )}
-                    <p className="card-meaning-vi">{card.vocabulary.meaningVi ?? "Chưa dịch"}</p>
-                    <p className="card-meaning-en">{card.vocabulary.meaning}</p>
-                  </div>
 
-                  <div className="card-footer">
-                    <div className="footer-item">
-                      <span>Next Review:</span>
-                      <strong>{formatDate(card.nextReviewAt)}</strong>
-                    </div>
-                    {card.lastReviewedAt && (
-                      <div className="footer-item">
-                        <span>Last Reviewed:</span>
-                        <span>{formatDate(card.lastReviewedAt)}</span>
+                    <div className="card-main">
+                      <div className="word-row">
+                        <h3>{card.vocabulary.word}</h3>
+                        <button 
+                          type="button" 
+                          onClick={() => playAudio(card.vocabulary.word, card.vocabulary.audioUrl)}
+                          className="btn-small-audio"
+                        >
+                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                            <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.063.922-2.063 2.063v4.875c0 1.141.922 2.062 2.063 2.062h1.932l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM17.56 12a5.3 5.3 0 01-2.06 4.19.75.75 0 01-.94-1.17 3.8 3.8 0 001.5-3.02 3.8 3.8 0 00-1.5-3.02.75.75 0 01.94-1.17A5.3 5.3 0 0117.56 12z" />
+                          </svg>
+                        </button>
                       </div>
-                    )}
+                      {card.vocabulary.pronunciation && (
+                        <p className="card-pronunciation">/{card.vocabulary.pronunciation}/</p>
+                      )}
+                      <p className="card-meaning-vi">{card.vocabulary.meaningVi ?? "Chưa dịch"}</p>
+                      <p className="card-meaning-en">{card.vocabulary.meaning}</p>
+                    </div>
+
+                    <div className="card-footer">
+                      <div className="footer-item">
+                        <span>Next Review:</span>
+                        <strong>{formatDate(card.nextReviewAt)}</strong>
+                      </div>
+                      {card.lastReviewedAt && (
+                        <div className="footer-item">
+                          <span>Last Reviewed:</span>
+                          <span>{formatDate(card.lastReviewedAt)}</span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        className="btn-card-study"
+                        onClick={() => {
+                          setActiveStudyCard(card);
+                          setIsModalFlipped(false);
+                        }}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                        </svg>
+                        Study Flashcard
+                      </button>
+
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flashcards-pagination">
+                  <span className="pagination-info">
+                    Showing {(currentPage - 1) * cardsPerPage + 1} - {Math.min(currentPage * cardsPerPage, filteredCards.length)} of {filteredCards.length} cards
+                  </span>
+                  <div className="pagination-controls">
                     <button
                       type="button"
-                      className="btn-card-study"
-                      onClick={() => {
-                        setActiveStudyCard(card);
-                        setIsModalFlipped(false);
-                      }}
+                      className="pagination-btn"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(1)}
+                      title="First Page"
                     >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-                      </svg>
-                      Study Flashcard
+                      &laquo;
+                    </button>
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage((prev) => prev - 1)}
+                      title="Previous Page"
+                    >
+                      &lsaquo;
                     </button>
 
-                  </div>
-                </article>
-              ))}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((page) => {
+                        return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
+                      })
+                      .map((page, idx, arr) => {
+                        const elements = [];
+                        if (idx > 0 && page - arr[idx - 1] > 1) {
+                          elements.push(<span key={`ellipsis-${page}`} className="pagination-ellipsis" style={{ padding: "0 4px", color: "#87928b" }}>...</span>);
+                        }
+                        elements.push(
+                          <button
+                            key={page}
+                            type="button"
+                            className={`pagination-btn ${currentPage === page ? "active" : ""}`}
+                            onClick={() => setCurrentPage(page)}
+                          >
+                            {page}
+                          </button>
+                        );
+                        return elements;
+                      })}
 
-            </div>
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage((prev) => prev + 1)}
+                      title="Next Page"
+                    >
+                      &rsaquo;
+                    </button>
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(totalPages)}
+                      title="Last Page"
+                    >
+                      &raquo;
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </section>
       )}

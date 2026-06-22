@@ -15,5 +15,6 @@ import { PrismaFlashcardRepository } from '../repositories/prisma-flashcard.repo
       useClass: PrismaFlashcardRepository,
     },
   ],
+  exports: [FlashcardService, FLASHCARD_REPOSITORY],
 })
 export class FlashcardModule {}

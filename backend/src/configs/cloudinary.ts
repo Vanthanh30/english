@@ -53,6 +53,18 @@ export class CloudinaryImageService {
     });
   }
 
+  async delete(publicId: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader.destroy(publicId, (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  }
+
   private toUploadedImage(result: UploadApiResponse): UploadedImage {
     return {
       url: result.secure_url,

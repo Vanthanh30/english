@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { authApi } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth.store";
+import { ChatbotPopup } from "@/components/chatbot";
 
 export function Providers({ children }: Readonly<{ children: React.ReactNode }>) {
   const [queryClient] = useState(
@@ -56,6 +57,9 @@ export function Providers({ children }: Readonly<{ children: React.ReactNode }>)
   }, [hasHydrated]);
 
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      {children}
+      <ChatbotPopup />
+    </QueryClientProvider>
   );
 }

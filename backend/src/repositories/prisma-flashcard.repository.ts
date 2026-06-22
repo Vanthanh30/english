@@ -20,6 +20,13 @@ export class PrismaFlashcardRepository implements FlashcardRepository {
         exampleSentence: true,
         imageUrl: true,
         audioUrl: true,
+        topic: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
       },
     };
   }

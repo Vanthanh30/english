@@ -229,6 +229,57 @@ export default function DashboardPage() {
               </span>
             </Link>
 
+            <Link href="/reading" className="dashboard-card tool-card">
+              <div className="tool-card-header">
+                <span className="tool-card-icon">📖</span>
+                <span className="tool-card-badge info">Workspace</span>
+              </div>
+              <div>
+                <h3>Reading Workspace</h3>
+                <p>
+                  Import web links or documents (PDF, DOCX, TXT) and build an immersive reading context to study vocabulary.
+                </p>
+              </div>
+              <span className="tool-card-footer">
+                Enter Workspace &rarr;
+              </span>
+            </Link>
+
+            <div
+              onClick={() => window.dispatchEvent(new CustomEvent("open-ai-tutor"))}
+              className="dashboard-card tool-card cursor-pointer"
+            >
+              <div className="tool-card-header">
+                <span className="tool-card-icon">🤖</span>
+                <span className="tool-card-badge info">AI Tutor</span>
+              </div>
+              <div>
+                <h3>AI Chatbot</h3>
+                <p>
+                  Practice English conversations, ask grammar questions, and learn vocabulary with your personal AI English Tutor.
+                </p>
+              </div>
+              <span className="tool-card-footer text-[#2f6d4f] font-semibold">
+                Start chatting &rarr;
+              </span>
+            </div>
+
+            <Link href="/vision" className="dashboard-card tool-card">
+              <div className="tool-card-header">
+                <span className="tool-card-icon">📷</span>
+                <span className="tool-card-badge info">Vision AI</span>
+              </div>
+              <div>
+                <h3>Image Recognition</h3>
+                <p>
+                  Upload real-world images and have Vision AI automatically generate vocabulary lists and translations to study.
+                </p>
+              </div>
+              <span className="tool-card-footer">
+                Start scanning &rarr;
+              </span>
+            </Link>
+
             <Link href="/notes" className="dashboard-card tool-card">
               <div className="tool-card-header">
                 <span className="tool-card-icon">📝</span>
