@@ -1,5 +1,6 @@
-import { redirect } from "next/navigation";
+import { ChatbotPage } from "@/components/chatbot/ChatbotPage";
 
 export default function Page() {
-  redirect("/dashboard");
+  return <ChatbotPage />;
 }
+

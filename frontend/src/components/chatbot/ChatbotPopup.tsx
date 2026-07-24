@@ -10,15 +10,7 @@ function isExerciseMessage(text: string): boolean {
   const cleanText = text.replace(/\\_/g, "_");
   const lower = cleanText.toLowerCase();
 
-  // 1. If it has clear blanks or multiple choice options, it is a practice sheet!
-  const hasBlanks = /_{3,}|\.{3,}/.test(cleanText);
-  const hasOptions = /^[A-D]\.\s+/gim.test(cleanText);
-  
-  if (hasBlanks || hasOptions) {
-    return true;
-  }
-
-  // 2. If the message is AI's grading response, it shouldn't show "Làm bài tập" or "Tải về"
+  // 1. If the message is AI's grading response or explanation, return false
   if (
     lower.includes("chính xác!") || 
     lower.includes("chưa chính xác") || 
@@ -26,19 +18,29 @@ function isExerciseMessage(text: string): boolean {
     lower.includes("grading result") || 
     lower.includes("điểm số") || 
     lower.includes("score:") ||
+    lower.includes("score :") ||
+    lower.includes("score/") ||
+    lower.includes("score /") ||
+    lower.includes("correct answer") ||
+    lower.includes("giving it a try") ||
+    lower.includes("here is your score") ||
+    lower.includes("explanation for each sentence") ||
+    lower.includes("correct answers together") ||
     lower.includes("tuyệt vời!") ||
-    lower.includes("hoàn thành bài tập")
+    lower.includes("hoàn thành bài tập") ||
+    lower.includes("lời giải chi tiết") ||
+    lower.includes("dưới đây là lời giải") ||
+    lower.includes("dưới đây là giải thích") ||
+    lower.includes("hướng dẫn giải")
   ) {
     return false;
   }
 
-  // 3. Fallback checks for exercises
-  return (
-    lower.includes("bài tập") ||
-    lower.includes("exercise") ||
-    lower.includes("câu hỏi") ||
-    /\d+[\.\)]\s+/.test(cleanText)
-  );
+  // 2. An exercise MUST contain blanks (___ or ...) OR multiple choice options (A. B. C. D.)
+  const hasBlanks = /_{3,}|\.{3,}/.test(cleanText);
+  const hasOptions = /^[-*]?\s*\*{0,2}\s*([A-D]|[a-d])\s*[\.\)\:\-]/gim.test(cleanText);
+  
+  return hasBlanks || hasOptions;
 }
 
 interface Option {
@@ -103,6 +105,38 @@ function isFeedbackLine(line: string): boolean {
   return feedbackKeywords.some(keyword => lower.includes(keyword));
 }
 
+function removeNoteParentheses(text: string): string {
+  if (!text) return "";
+  // Strip out (Chú ý: ...), (Lưu ý: ...), (Gợi ý: ...), (Note: ...), [Chú ý: ...]
+  return text
+    .replace(/[\(\[\{]\s*(?:Chú ý|Lưu ý|Gợi ý|Note|Tip)\s*[\:\-][^\)\]\}]*[\)\]\}]/gi, "")
+    .replace(/\s*(?:Chú ý|Lưu ý|Gợi ý|Note|Tip)\s*[\:\-].*$/gi, "")
+    .trim();
+}
+
+function extractShortQuestionSentence(prompt: string): string {
+  if (!prompt) return "";
+  
+  // Clean double asterisks and note parenthetical blocks
+  const clean = removeNoteParentheses(prompt.replace(/\*\*/g, "")).trim();
+  const lines = clean.split("\n").map((l) => l.trim()).filter(Boolean);
+  
+  // 1. If there are lines containing blanks (___ or ...)
+  const blankLines = lines.filter((l) => /_{3,}|\.{3,}/.test(l));
+  if (blankLines.length > 0) {
+    return removeNoteParentheses(blankLines.join(" "));
+  }
+
+  // 2. If there are lines containing verb cues e.g. (learn), (be)
+  const cueLines = lines.filter((l) => /\([a-zA-Z\/\s\.-]+\)/.test(l) || /^[A-D]\.\s+/i.test(l));
+  if (cueLines.length > 0) {
+    return removeNoteParentheses(cueLines.join(" "));
+  }
+
+  // 3. Otherwise return the last sentence/line (which is the actual question prompt)
+  return removeNoteParentheses(lines[lines.length - 1] || clean);
+}
+
 function parseExercises(text: string): { intro: string; questions: Question[] } {
   if (!text) return { intro: "", questions: [] };
 
@@ -114,15 +148,23 @@ function parseExercises(text: string): { intro: string; questions: Question[] } 
   let isFeedbackActive = false;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+    const rawLine = lines[i].trim();
+    if (!rawLine) continue;
+
+    // Clean outer markdown bolding (**), asterisks (*), dashes (-), and hashes (#)
+    const line = rawLine
+      .replace(/^\s*[\*\-\#]+\s*/, "")
+      .replace(/\s*\*+\s*$/, "")
+      .trim();
+
     if (!line) continue;
 
-    const isQuestionStart = line.match(/^\s*(?:(?:Question|Câu)\s+)?(\d+)\s*[\.\:\)]\s*(.+)$/i);
-    const isOptionStart = line.match(/^\s*[-*]?\s*([A-D]|[a-d])\s*[\.\)\:\-]\s*(.+)$/i);
+    const isQuestionStart = line.match(/^(?:(?:Question|Câu)\s+)?(\d+)\s*[\.\:\)]\s*(.+)$/i);
+    const isOptionStart = line.match(/^([A-D]|[a-d])\s*[\.\)\:\-]\s*(.+)$/i);
 
     // Look ahead to check for remaining questions in the file
     const remainingText = lines.slice(i).join("\n");
-    const hasMoreQuestions = /^\s*(?:(?:Question|Câu)\s+)?(\d+)\s*[\.\:\)]/mi.test(remainingText);
+    const hasMoreQuestions = /(?:(?:Question|Câu)\s+)?\d+\s*[\.\:\)]/i.test(remainingText);
 
     // If we have started parsing questions, check if we entered outro block
     if (questions.length > 0 || currentQuestion) {
@@ -134,7 +176,7 @@ function parseExercises(text: string): { intro: string; questions: Question[] } 
       }
     }
 
-    const questionMatch = line.match(/^\s*(?:(?:Question|Câu)\s+)?(\d+)\s*[\.\:\)]\s*(.+)$/i);
+    const questionMatch = line.match(/^(?:(?:Question|Câu)\s+)?(\d+)\s*[\.\:\)]\s*(.+)$/i);
 
     if (questionMatch) {
       if (currentQuestion) {
@@ -142,17 +184,17 @@ function parseExercises(text: string): { intro: string; questions: Question[] } 
       }
       currentQuestion = {
         id: parseInt(questionMatch[1], 10),
-        prompt: questionMatch[2].trim(),
+        prompt: questionMatch[2].replace(/\*\*/g, "").trim(),
         options: [],
         type: "short-answer",
-        rawText: line,
+        rawText: rawLine,
       };
       isFeedbackActive = false; // Reset feedback flag for new question
     } else if (currentQuestion) {
-      currentQuestion.rawText += "\n" + line;
+      currentQuestion.rawText += "\n" + rawLine;
 
       // Check if it's an option like "A. ...", "B) ...", "a. ...", "A - ..."
-      const optionMatch = line.match(/^\s*[-*]?\s*([A-D]|[a-d])\s*[\.\)\:\-]\s*(.+)$/);
+      const optionMatch = line.match(/^([A-D]|[a-d])\s*[\.\)\:\-]\s*(.+)$/);
       if (optionMatch) {
         currentQuestion.options.push({
           key: optionMatch[1].toUpperCase(),
@@ -160,8 +202,8 @@ function parseExercises(text: string): { intro: string; questions: Question[] } 
         });
         currentQuestion.type = "multiple-choice";
       } else {
-        // Check if we hit feedback content
-        if (isFeedbackLine(line)) {
+        // Check if we hit feedback content or note lines
+        if (isFeedbackLine(line) || /^\s*[\(\[\{]?\s*(?:Chú ý|Lưu ý|Gợi ý|Note)\s*[\:\-]/i.test(line)) {
           isFeedbackActive = true;
         }
         // Only append to prompt if we haven't hit feedback
@@ -178,12 +220,12 @@ function parseExercises(text: string): { intro: string; questions: Question[] } 
     questions.push(currentQuestion);
   }
 
-  // Refine question types and clean prompt
+  // Refine question types and clean prompt into concise short sentences
   questions.forEach((q) => {
-    // 1. Remove double asterisks ** from prompt
-    let cleanPrompt = q.prompt.replace(/\*\*/g, "").trim();
+    // Extract concise short question sentence, excluding long pre-explanation paragraphs and notes
+    let cleanPrompt = removeNoteParentheses(extractShortQuestionSentence(q.prompt));
 
-    // 2. Replace incorrect answers after parenthesized cues with underscores
+    // Replace incorrect answers after parenthesized cues with underscores
     cleanPrompt = cleanPrompt.replace(/(\([\w\/\s\.-]+\))\s+((?:not\s+)?(?:[a-zA-Z\/\']+))/gi, "$1 ______");
 
     q.prompt = cleanPrompt;
@@ -249,13 +291,22 @@ function cleanExerciseText(text: string): string {
 function renderMarkdown(text: string) {
   if (!text) return "";
   
-  // Clean backslashes from underscores before rendering
-  let cleanText = text.replace(/\\_/g, "_");
+  // Clean backslashes from underscores and LaTeX symbols before rendering
+  let cleanText = text
+    .replace(/\\_/g, "_")
+    .replace(/\$\\rightarrow\$/g, "→")
+    .replace(/\\rightarrow/g, "→");
 
   let html = cleanText
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+
+  // Remove raw #, ##, ### markdown headers and replace with clean bold titles
+  html = html.replace(
+    /^\s*#{1,6}\s+(.+)$/gm,
+    '<div class="font-extrabold text-[#2f6d4f] text-xs my-2 pb-0.5 border-b border-[#2f6d4f]/10">$1</div>'
+  );
 
   // Code blocks: ```code```
   html = html.replace(
@@ -278,6 +329,12 @@ function renderMarkdown(text: string) {
 
   // Bullet points: - item or * item
   html = html.replace(/^\s*[-*]\s+(.+)$/gm, '<li class="ml-4 list-disc my-0.5">$1</li>');
+
+  // Highlight & bold question prompts (in đậm câu): e.g. 1. "...", Câu 1: ..., Question 1: ...
+  html = html.replace(
+    /^(\s*(?:(?:Question|Câu)\s+)?\d+\s*[\.\:\)]\s*)(.+)$/gim,
+    '<div class="font-bold text-[#14251d] text-xs my-1.5 leading-relaxed">$1<span class="font-extrabold text-[#2f6d4f]">$2</span></div>'
+  );
 
   // Format multiple choice options A., B., C., D.
   html = html.replace(
@@ -323,6 +380,8 @@ export function ChatbotPopup() {
   const [workspaceMode, setWorkspaceMode] = useState<"interactive" | "text">("interactive");
   const [parsedExercises, setParsedExercises] = useState<{ intro: string; questions: Question[] }>({ intro: "", questions: [] });
   const [interactiveAnswers, setInteractiveAnswers] = useState<Record<number, any>>({});
+  const [openHints, setOpenHints] = useState<Record<number, boolean>>({});
+  const [autoShowHints, setAutoShowHints] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -335,12 +394,12 @@ export function ChatbotPopup() {
     },
     {
       label: "Explain present perfect",
-      text: "Explain when to use present perfect tense vs simple past in English.",
+      text: "Giải thích khi nào dùng Thì Hiện tại hoàn thành (Present Perfect) và Thì Quá khứ đơn (Simple Past) bằng tiếng Việt, sau đó cho 3 câu bài tập đục lỗ để tôi luyện tập.",
       icon: "💡"
     },
     {
       label: "Correct sentence",
-      text: "Correct this sentence: 'I am study English since two years.'",
+      text: "Sửa lỗi câu sau và giải thích bằng tiếng Việt: 'I am study English since two years.', sau đó cho bài tập đục lỗ tương tự.",
       icon: "✏️"
     },
   ];
@@ -380,6 +439,17 @@ export function ChatbotPopup() {
     });
   };
 
+  // Reset chatbot to default welcome screen when user logs in or changes
+  useEffect(() => {
+    if (user?.id) {
+      setSelectedSessionId(null);
+      setMessages([]);
+      setShowSessionsList(false);
+      setIsOpenWorkspace(false);
+      setWorkspaceGradingResult(null);
+    }
+  }, [user?.id]);
+
   // Fetch all chat sessions when user is available
   useEffect(() => {
     if (sessionReady && user && isOpen) {
@@ -405,9 +475,7 @@ export function ChatbotPopup() {
     try {
       const data = await chatbotApi.listSessions();
       setSessions(data);
-      if (data.length > 0 && !selectedSessionId) {
-        setSelectedSessionId(data[0].id);
-      }
+      // Keep selectedSessionId as null by default so user sees the default welcome screen on login
     } catch (err) {
       console.error("Failed to load sessions", err);
     }
@@ -531,16 +599,56 @@ export function ChatbotPopup() {
     });
   };
 
+function splitKnowledgeAndExercises(text: string): { knowledgeText: string; exerciseText: string } {
+  if (!text) return { knowledgeText: "", exerciseText: "" };
+
+  const lines = text.split("\n");
+  let splitIndex = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i].trim();
+    const cleanLine = rawLine.replace(/^\s*[\*\-\#]+\s*/, "").replace(/\s*\*+\s*$/, "").trim();
+
+    // Check for explicit exercise section headers e.g. "### 📝 Bài tập", "PHẦN II: Bài tập", "PHẦN I: Trắc nghiệm"
+    const isExerciseHeader = /^(?:PHẦN|PART)?\s*\d*[\:\-]?\s*(?:📝\s*)?(?:Bài tập|Practice Exercises|Trắc nghiệm|Đục lỗ|Multiple Choice|Fill in)/i.test(cleanLine);
+    
+    if (isExerciseHeader) {
+      splitIndex = i;
+      break;
+    }
+
+    // Alternatively, if line is a question number AND has blanks or options in subsequent line
+    const isQuestionNumber = /^(?:(?:Question|Câu)\s+)?\d+\s*[\.\:\)]/i.test(cleanLine);
+    const hasBlanksOrOptions = /_{3,}|\.{3,}/.test(cleanLine) || /^[-*]?\s*\*{0,2}\s*([A-D]|[a-d])\s*[\.\)\:\-]/i.test(lines[i + 1] || "");
+    if (isQuestionNumber && hasBlanksOrOptions) {
+      splitIndex = i;
+      break;
+    }
+  }
+
+  if (splitIndex !== -1) {
+    const knowledgeText = lines.slice(0, splitIndex).join("\n").trim();
+    const exerciseText = lines.slice(splitIndex).join("\n").trim();
+    return { knowledgeText, exerciseText };
+  }
+
+  return { knowledgeText: text, exerciseText: text };
+}
+
   const renderFillInTheBlankPrompt = (q: Question) => {
     const parts = q.prompt.split(/_{3,}|\.{3,}/g);
     return (
-      <div className="text-xs leading-relaxed text-[#14251d] font-semibold">
+      <div className="text-xs leading-loose text-[#14251d] font-bold bg-gradient-to-r from-emerald-50/50 via-white to-emerald-50/40 p-4 rounded-2xl border border-emerald-950/10 shadow-3xs leading-relaxed">
         {parts.map((part: string, idx: number) => {
           const answersList = interactiveAnswers[q.id] || [];
           const currentValue = answersList[idx] || "";
+
+          // Format verb cues e.g. (walk), (be) into amber pill tags
+          const formattedPart = part.replace(/\(([^)]+)\)/g, '<span class="inline-block px-2 py-0.5 mx-1 bg-amber-100/90 text-amber-900 rounded-md font-extrabold text-[11px] border border-amber-300 shadow-3xs">($1)</span>');
+
           return (
             <span key={idx} className="align-middle inline">
-              {part}
+              <span dangerouslySetInnerHTML={{ __html: formattedPart }} />
               {idx < parts.length - 1 && (
                 <input
                   type="text"
@@ -548,7 +656,12 @@ export function ChatbotPopup() {
                   onChange={(e) => handleFillBlankChange(q.id, idx, e.target.value)}
                   disabled={isSubmittingWorkspace}
                   placeholder={`[${idx + 1}]`}
-                  className="mx-1 px-2 py-0.5 border-b-2 border-[#2f6d4f] focus:outline-none focus:border-[#214f3a] bg-emerald-50/20 focus:bg-emerald-50 text-center font-bold text-[#2f6d4f] transition-all w-24 text-xs placeholder-[#2f6d4f]/30"
+                  style={{ width: `${Math.max(currentValue.length + 3, 6)}ch` }}
+                  className={`mx-1.5 px-2 py-1 border-b-2 text-center font-black text-[#2f6d4f] rounded-t-xl transition-all text-xs shadow-3xs inline-block focus:outline-none focus:ring-2 focus:ring-[#2f6d4f]/20 ${
+                    currentValue.trim().length > 0
+                      ? "border-[#2f6d4f] bg-emerald-100/80 text-[#2f6d4f]"
+                      : "border-dashed border-[#2f6d4f]/60 bg-emerald-50/50 placeholder-[#2f6d4f]/50 hover:bg-white"
+                  }`}
                 />
               )}
             </span>
@@ -558,12 +671,157 @@ export function ChatbotPopup() {
     );
   };
 
+function extractHintForQuestion(q: Question): string {
+  const prompt = q.prompt || "";
+  const lower = prompt.toLowerCase();
+  const rawLower = (q.rawText || "").toLowerCase();
+  const fullText = lower + " " + rawLower;
+
+  const verbMatches = prompt.match(/\(([^)]+)\)/g);
+  const verbs = verbMatches ? verbMatches.map(v => v.replace(/[\(\)]/g, "").trim()) : [];
+
+  const hints: string[] = [];
+
+  // 1. Dual Tense Contrast e.g. "usually" + "today" / "but today"
+  const hasUsually = /usually|always|often|sometimes|every\s+\w+/i.test(fullText);
+  const hasToday = /today|now|at the moment|currently|this\s+week/i.test(fullText);
+
+  if (hasUsually && hasToday) {
+    hints.push("• Vế 1 có trạng từ chỉ thói quen ('usually') -> Chia Thì Hiện tại đơn (Present Simple).");
+    hints.push("• Vế 2 có hành động đặc biệt diễn ra hôm nay ('but today') -> Chia Thì Hiện tại tiếp diễn (am/is/are + V-ing).");
+  } else {
+    // 2. Frequency / Present Simple signals
+    if (hasUsually) {
+      const matchWord = fullText.match(/usually|always|often|sometimes|every\s+\w+/i)?.[0] || "usually";
+      const isSingular = /\b(she|he|it|my\s+\w+|the\s+\w+|someone|everyone|water|the\s+sun)\b/i.test(fullText);
+      hints.push(`• Trạng từ chỉ thói quen/chân lý ('${matchWord}') -> Chia Thì Hiện tại đơn.`);
+      if (isSingular) {
+        hints.push("• Chủ ngữ là ngôi số ít (She/He/It/Danh từ số ít) -> Động từ chia thêm '-s/es' (ví dụ: goes, rises, works) hoặc dùng 'is/does'.");
+      }
+    }
+
+    // 3. Present Continuous signals
+    if (hasToday && !hasUsually) {
+      hints.push("• Sự việc đang diễn ra hôm nay/lúc này ('today/now/at the moment') -> Chia Thì Hiện tại tiếp diễn (am/is/are + V-ing).");
+    }
+
+    // 4. Past Simple signals
+    if (/yesterday|ago|last\s+\w+|in\s+\d{4}/i.test(fullText)) {
+      const matchWord = fullText.match(/yesterday|ago|last\s+\w+|in\s+\d{4}/i)?.[0] || "yesterday";
+      hints.push(`• Mốc thời gian quá khứ ('${matchWord}') -> Chia Thì Quá khứ đơn (V2/V-ed).`);
+    }
+
+    // 5. Present Perfect signals
+    if (/since|for\s+\d+|already|just|yet|ever|never/i.test(fullText)) {
+      hints.push("• Dấu hiệu nhận biết 'since/for/already/just/yet' -> Chia Thì Hiện tại hoàn thành (have/has + V3/V-ed).");
+    }
+
+    // 6. Look! / Listen! exclamation signals
+    if (/look!|listen!/i.test(fullText)) {
+      hints.push("• Từ gây chú ý 'Look!' / 'Listen!' -> Sự việc đang xảy ra ngay lúc nói -> Chia Thì Hiện tại tiếp diễn (am/is/are + V-ing).");
+    }
+
+    // 7. Passive Voice
+    if (/\bby\b/i.test(fullText) && /was|were|is|are|been/i.test(fullText)) {
+      hints.push("• Cấu trúc Câu bị động (Passive Voice) -> Dùng dạng be + V3/V-ed.");
+    }
+  }
+
+  // Verb Cues Specific Guidance
+  if (verbs.length > 0) {
+    hints.push(`• Động từ cần chia: ${verbs.map(v => `"${v}"`).join(", ")}.`);
+  }
+
+  if (hints.length > 0) {
+    return hints.join("\n");
+  }
+
+  // Fallback specific to options if available
+  if (q.options && q.options.length > 0) {
+    const optTexts = q.options.map(o => `${o.key}: ${o.text}`).join(" | ");
+    return `• Đối chiếu sự khác biệt giữa các đáp án: ${optTexts}.\n• Đọc kỹ từ đứng trước/sau vị trí trống để xác định thì và hòa hợp chủ ngữ - động từ.`;
+  }
+
+  return `• Đọc kỹ ngữ cảnh và thời gian xảy ra hành động trong câu để chọn dạng từ đúng.`;
+}
+
+function isGradingResponse(text: string): boolean {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  return (
+    lower.includes("chính xác!") || 
+    lower.includes("chưa chính xác") || 
+    lower.includes("sửa lại:") || 
+    lower.includes("grading result") || 
+    lower.includes("điểm số") || 
+    lower.includes("score:") ||
+    lower.includes("score :") ||
+    lower.includes("score/") ||
+    lower.includes("score /") ||
+    lower.includes("correct answer") ||
+    lower.includes("giving it a try") ||
+    lower.includes("here is your score") ||
+    lower.includes("explanation for each sentence") ||
+    lower.includes("correct answers together") ||
+    lower.includes("tuyệt vời!") ||
+    lower.includes("hoàn thành bài tập")
+  );
+}
+
+function isSolutionResponse(text: string): boolean {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  return (
+    lower.includes("lời giải") ||
+    lower.includes("dưới đây là lời giải") ||
+    lower.includes("hướng dẫn giải") ||
+    lower.includes("gợi ý & lời giải") ||
+    lower.includes("đáp án:") ||
+    lower.includes("giải thích:") ||
+    lower.includes("detailed solution") ||
+    lower.includes("here is the solution")
+  );
+}
+
+function findOriginalExerciseMessage(targetMsgId: string, messageList: ChatMessage[]): ChatMessage | null {
+  const index = messageList.findIndex((m) => m.id === targetMsgId);
+  if (index === -1) return null;
+
+  const targetMsg = messageList[index];
+  if (!isGradingResponse(targetMsg.content) && isExerciseMessage(targetMsg.content)) {
+    return targetMsg;
+  }
+
+  // Look backwards for the nearest AI exercise message before targetMsg
+  for (let i = index - 1; i >= 0; i--) {
+    const prev = messageList[i];
+    if (prev.role === "model" && isExerciseMessage(prev.content) && !isGradingResponse(prev.content)) {
+      return prev;
+    }
+  }
+  return null;
+}
+
   // Open exercise workspace dialog modal
-  function openExerciseWorkspace(text: string, msgId: string) {
-    const cleaned = cleanExerciseText(text);
-    setActiveExerciseText(cleaned);
+  function openExerciseWorkspace(text: string, msgId: string, showHints = false) {
+    let exerciseText = text;
+    let targetMsgId = msgId;
+
+    if (isGradingResponse(text)) {
+      const origMsg = findOriginalExerciseMessage(msgId, messages);
+      if (origMsg) {
+        exerciseText = origMsg.content;
+        targetMsgId = origMsg.id;
+        showHints = true;
+      }
+    }
+
+    const cleaned = cleanExerciseText(exerciseText);
+    const { knowledgeText, exerciseText: onlyExerciseText } = splitKnowledgeAndExercises(cleaned);
+
+    setActiveExerciseText(knowledgeText || cleaned);
     
-    const parsed = parseExercises(cleaned);
+    const parsed = parseExercises(onlyExerciseText || cleaned);
     setParsedExercises(parsed);
     
     if (parsed.questions.length === 0) {
@@ -572,8 +830,10 @@ export function ChatbotPopup() {
       setWorkspaceMode("interactive");
     }
 
-    // Initialize interactive answers
+    // Initialize interactive answers and hint visibility
     const initialAnswers: Record<number, any> = {};
+    const initialHintsMap: Record<number, boolean> = {};
+
     parsed.questions.forEach((q) => {
       if (q.type === "fill-in-the-blank") {
         const parts = q.prompt.split(/_{3,}|\.{3,}/g);
@@ -581,11 +841,14 @@ export function ChatbotPopup() {
       } else {
         initialAnswers[q.id] = "";
       }
+      initialHintsMap[q.id] = showHints;
     });
+
     setInteractiveAnswers(initialAnswers);
-    
-    setUserAnswersText(cleaned); // pre-populate editable layout with cleaned questions
-    setActiveExerciseMsgId(msgId);
+    setOpenHints(initialHintsMap);
+    setAutoShowHints(showHints);
+    setUserAnswersText(cleaned);
+    setActiveExerciseMsgId(targetMsgId);
     setWorkspaceGradingResult(null);
     setIsOpenWorkspace(true);
   }
@@ -619,7 +882,12 @@ Please grade my answers, provide a score, and explain any corrections.`;
     };
     setMessages((prev) => [...prev, tempUserMsg]);
 
+    // Close exercise workspace modal immediately upon submission
+    setIsOpenWorkspace(false);
+    setWorkspaceGradingResult(null);
+
     try {
+      setIsLoading(true);
       const gradingReply = await chatbotApi.sendMessage(selectedSessionId, prompt);
       setMessages((prev) => [
         ...prev.filter((m) => m.id !== tempUserMsg.id),
@@ -629,14 +897,13 @@ Please grade my answers, provide a score, and explain any corrections.`;
       
       // Mark this message ID as submitted
       markMessageAsSubmitted(activeExerciseMsgId);
-      
       fetchSessions();
-      setIsOpenWorkspace(false); // Automatically close popup after submission
     } catch (err: any) {
       alert(err.message || "Failed to submit and grade workspace answers.");
       setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
     } finally {
       setIsSubmittingWorkspace(false);
+      setIsLoading(false);
     }
   }
 
@@ -766,62 +1033,72 @@ Please grade my answers, provide a score, and explain any corrections.`;
                   <div className="flex items-center gap-2 pb-3 border-b border-[#14251d]/5 shrink-0 mb-3 justify-between">
                     <span className="text-xs font-black text-[#2f6d4f] uppercase tracking-wider">Your Answer Sheet</span>
                     
-                    {/* Tab switches */}
-                    <div className="flex bg-[#f7f3e8] p-0.5 rounded-full border border-[#2f6d4f]/10">
-                      <button
-                        onClick={() => setWorkspaceMode("interactive")}
-                        disabled={parsedExercises.questions.length === 0}
-                        className={`py-1 px-3 rounded-full text-[10px] font-bold transition-all ${
-                          workspaceMode === "interactive"
-                            ? "bg-[#2f6d4f] text-white shadow-xs"
-                            : "text-[#5d6d64] hover:text-[#14251d] disabled:opacity-40"
-                        }`}
-                        title="Dạng trắc nghiệm / điền từ / chọn đáp án trực quan"
-                      >
-                        Interactive Form
-                      </button>
-                      <button
-                        onClick={() => setWorkspaceMode("text")}
-                        className={`py-1 px-3 rounded-full text-[10px] font-bold transition-all ${
-                          workspaceMode === "text"
-                            ? "bg-[#2f6d4f] text-white shadow-xs"
-                            : "text-[#5d6d64] hover:text-[#14251d]"
-                        }`}
-                        title="Tự soạn câu trả lời bằng văn bản"
-                      >
-                        Text Editor
-                      </button>
-                    </div>
+                    <span className="px-2.5 py-0.5 bg-emerald-100 text-[#2f6d4f] rounded-full text-[10px] font-extrabold border border-emerald-200 shadow-3xs">
+                      Interactive Form
+                    </span>
                   </div>
 
-                  {workspaceMode === "interactive" ? (
-                    // Interactive form rendering
-                    <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                  {/* Interactive form rendering */}
+                  <div className="flex-1 overflow-y-auto space-y-4 pr-1">
                       {parsedExercises.questions.filter((q) => !q.isCorrect).map((q) => (
                         <div
                           key={q.id}
                           className="bg-white border border-[#14251d]/10 rounded-2xl p-4 shadow-3xs hover:shadow-2xs transition-shadow"
                         >
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="px-2 py-0.5 bg-emerald-100 text-[#2f6d4f] rounded-full text-[9px] font-black uppercase tracking-wider">
-                              Câu {q.id}
-                            </span>
-                            <span className="text-[10px] text-[#5d6d64] font-medium uppercase tracking-wider">
-                              {q.type === "multiple-choice"
-                                ? "Chọn đáp án"
-                                : q.type === "fill-in-the-blank"
-                                ? "Điền vào chỗ trống"
-                                : "Trả lời ngắn"}
-                            </span>
+                          <div className="flex items-center justify-between gap-2 mb-3">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-0.5 bg-[#2f6d4f] text-white rounded-full text-[9px] font-black uppercase tracking-wider shadow-3xs">
+                                Câu {q.id}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
+                                q.type === "multiple-choice"
+                                  ? "bg-purple-100 text-purple-800 border border-purple-200"
+                                  : q.type === "fill-in-the-blank"
+                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                  : "bg-blue-100 text-blue-800 border border-blue-200"
+                              }`}>
+                                {q.type === "multiple-choice"
+                                  ? "🎯 Trắc nghiệm"
+                                  : q.type === "fill-in-the-blank"
+                                  ? "✍️ Điền vào chỗ trống"
+                                  : "💬 Trả lời ngắn"}
+                              </span>
+                            </div>
+
+                            {/* Hint toggle button */}
+                            <button
+                              type="button"
+                              onClick={() => setOpenHints((prev) => ({ ...prev, [q.id]: !prev[q.id] }))}
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 transition-all border ${
+                                openHints[q.id]
+                                  ? "bg-amber-500 text-white border-amber-600 shadow-3xs"
+                                  : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                              }`}
+                              title="Bấm để xem/ẩn gợi ý ngữ pháp"
+                            >
+                              <span>💡</span>
+                              <span>{openHints[q.id] ? "Ẩn gợi ý" : "Gợi ý"}</span>
+                            </button>
                           </div>
+
+                          {/* Hint Box */}
+                          {openHints[q.id] && (
+                            <div className="mb-3 p-3 bg-amber-50/90 border border-amber-200 rounded-xl text-xs text-amber-950 leading-relaxed font-medium flex items-start gap-2 shadow-2xs animate-in fade-in duration-150">
+                              <span className="text-sm shrink-0">💡</span>
+                              <div className="flex-1">
+                                <span className="font-extrabold text-amber-950 block mb-0.5">Gợi ý cách làm:</span>
+                                <p className="text-[11px] text-amber-900 leading-normal">{extractHintForQuestion(q)}</p>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Question contents */}
                           {q.type === "multiple-choice" ? (
                             <div>
-                              <p className="text-xs font-semibold text-[#14251d] mb-2.5 leading-relaxed">
+                              <p className="text-xs font-extrabold text-[#14251d] mb-3 leading-relaxed bg-[#f7f3e8]/40 p-2.5 rounded-xl border border-[#14251d]/5">
                                 {q.prompt}
                               </p>
-                              <div className="grid grid-cols-1 gap-2">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                 {q.options.map((opt: any) => {
                                   const isSelected = interactiveAnswers[q.id] === opt.key;
                                   return (
@@ -829,22 +1106,23 @@ Please grade my answers, provide a score, and explain any corrections.`;
                                       key={opt.key}
                                       onClick={() => handleSelectOption(q.id, opt.key)}
                                       disabled={isSubmittingWorkspace}
-                                      className={`p-2.5 rounded-xl border text-left text-xs transition-all flex items-center gap-2.5 ${
+                                      className={`p-3 rounded-xl border text-left text-xs transition-all flex items-center gap-3 active:scale-98 ${
                                         isSelected
-                                          ? "border-[#2f6d4f] bg-[#2f6d4f]/5 text-[#2f6d4f] font-bold shadow-3xs"
-                                          : "border-[#14251d]/10 bg-white hover:bg-[#14251d]/5 text-gray-700"
+                                          ? "border-[#2f6d4f] bg-[#2f6d4f] text-white font-bold shadow-md ring-2 ring-[#2f6d4f]/20 transform scale-[1.01]"
+                                          : "border-[#14251d]/15 bg-white hover:bg-emerald-50/60 hover:border-[#2f6d4f]/40 text-[#14251d] shadow-3xs"
                                       }`}
                                     >
                                       <span
-                                        className={`w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-extrabold shrink-0 transition-colors ${
+                                        className={`w-6 h-6 rounded-full border flex items-center justify-center text-[10px] font-extrabold shrink-0 transition-colors ${
                                           isSelected
-                                            ? "bg-[#2f6d4f] text-white border-transparent"
-                                            : "border-gray-300 text-gray-400"
+                                            ? "bg-white text-[#2f6d4f] border-transparent shadow-2xs"
+                                            : "border-gray-300 text-gray-500 bg-gray-50"
                                         }`}
                                       >
                                         {opt.key}
                                       </span>
-                                      <span className="leading-tight">{opt.text}</span>
+                                      <span className="leading-tight flex-1 font-medium">{opt.text}</span>
+                                      {isSelected && <span className="text-white text-xs font-black">✓</span>}
                                     </button>
                                   );
                                 })}
@@ -856,31 +1134,26 @@ Please grade my answers, provide a score, and explain any corrections.`;
                             </div>
                           ) : (
                             <div>
-                              <p className="text-xs font-semibold text-[#14251d] mb-2 leading-relaxed">
+                              <p className="text-xs font-extrabold text-[#14251d] mb-3 leading-relaxed bg-[#f7f3e8]/60 p-3.5 rounded-2xl border border-[#14251d]/10 shadow-3xs">
                                 {q.prompt}
                               </p>
-                              <textarea
-                                value={interactiveAnswers[q.id] || ""}
-                                onChange={(e) => handleShortAnswerChange(q.id, e.target.value)}
-                                disabled={isSubmittingWorkspace}
-                                placeholder="Nhập câu trả lời của bạn tại đây..."
-                                className="w-full p-3 border border-[#14251d]/10 rounded-xl bg-white focus:outline-none focus:border-[#2f6d4f] focus:ring-2 focus:ring-[#2f6d4f]/10 text-xs font-medium leading-relaxed resize-none h-20 shadow-3xs disabled:bg-gray-50 text-[#14251d] transition-all"
-                              />
+                              <div className="relative">
+                                <textarea
+                                  value={interactiveAnswers[q.id] || ""}
+                                  onChange={(e) => handleShortAnswerChange(q.id, e.target.value)}
+                                  disabled={isSubmittingWorkspace}
+                                  placeholder="✍️ Nhập câu trả lời hoặc đoạn văn tự luận của bạn tại đây..."
+                                  className="w-full p-4 pr-14 border border-[#14251d]/15 rounded-2xl bg-white focus:outline-none focus:border-[#2f6d4f] focus:ring-4 focus:ring-[#2f6d4f]/10 text-xs font-medium leading-relaxed resize-none h-28 shadow-2xs text-[#14251d] transition-all placeholder-[#5d6d64]/60"
+                                />
+                                <div className="absolute bottom-3 right-3 text-[10px] font-extrabold text-[#2f6d4f] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 select-none shadow-3xs">
+                                  {(interactiveAnswers[q.id] || "").trim().split(/\s+/).filter(Boolean).length} từ
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    // Textarea fallback editor
-                    <textarea
-                      value={userAnswersText}
-                      onChange={(e) => setUserAnswersText(e.target.value)}
-                      disabled={isSubmittingWorkspace}
-                      placeholder="Type your answers directly on this question sheet..."
-                      className="w-full flex-1 p-4 border border-[#14251d]/10 rounded-2xl bg-white focus:outline-none focus:border-[#2f6d4f] focus:ring-2 focus:ring-[#2f6d4f]/10 text-xs font-mono leading-relaxed resize-none shadow-2xs disabled:bg-gray-50 transition-all text-[#14251d]"
-                    />
-                  )}
                 </div>
               </div>
             )}
@@ -1051,7 +1324,9 @@ Please grade my answers, provide a score, and explain any corrections.`;
               // Messages Deck list
               messages.map((m) => {
                 const isUser = m.role === "user";
-                const showsExercises = !isUser && isExerciseMessage(m.content) && !submittedMessageIds.includes(m.id);
+                const isSubmitted = submittedMessageIds.includes(m.id);
+                const isGrading = !isUser && isGradingResponse(m.content);
+                const showsExercises = !isUser && isExerciseMessage(m.content);
                 return (
                   <div key={m.id} className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
                     {!isUser && (
@@ -1075,31 +1350,50 @@ Please grade my answers, provide a score, and explain any corrections.`;
                         renderMarkdown(m.content)
                       )}
 
-                      {/* Download & Solve exercises buttons for AI replies - only show on actual exercise text */}
+                      {/* Redo with Hints & Next Exercise buttons for AI grading/solution responses */}
+                      {(isGrading || isSolutionResponse(m.content)) && (
+                        <div className="flex justify-end gap-2 mt-2.5 opacity-90 group-hover:opacity-100 transition-opacity flex-wrap">
+                          {/* Redo with Hints */}
+                          <button
+                            onClick={() => openExerciseWorkspace(m.content, m.id, true)}
+                            className="p-1.5 px-2.5 rounded-lg text-[10px] font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 flex items-center gap-1.5 transition-all border border-amber-300 shadow-3xs hover:shadow-2xs"
+                            title="Re-open original exercise sheet to redo with detailed hints"
+                          >
+                            <span>💡</span>
+                            <span className="uppercase tracking-wider">REDO WITH HINTS</span>
+                          </button>
+
+                          {/* Request Next Exercise Button */}
+                          <button
+                            onClick={() => handleSendMessage("Great job! Please give me 3-5 next practice exercises for this topic so I can continue practicing.")}
+                            disabled={isLoading}
+                            className="p-1.5 px-2.5 rounded-lg text-[10px] font-bold text-white bg-[#2f6d4f] hover:bg-[#214f3a] active:scale-95 flex items-center gap-1.5 transition-all shadow-3xs hover:shadow-2xs border border-[#2f6d4f]/20"
+                            title="Automatically ask QuestTutor for the next practice set"
+                          >
+                            <span>🎯</span>
+                            <span className="uppercase tracking-wider">NEXT EXERCISES</span>
+                            <svg className="w-3 h-3 text-white ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Solve exercises button for AI replies - ONLY show on actual exercise text */}
                       {showsExercises && (
-                        <div className="flex justify-end gap-2 mt-2.5 opacity-50 group-hover:opacity-100 transition-opacity flex-wrap">
+                        <div className="flex justify-end gap-2 mt-2.5 opacity-90 group-hover:opacity-100 transition-opacity flex-wrap">
                           {/* Solve Exercises Directly Button */}
                           <button
-                            onClick={() => openExerciseWorkspace(m.content, m.id)}
-                            className="p-1 px-1.5 rounded-md text-[10px] font-semibold text-[#2f6d4f] hover:bg-emerald-50 flex items-center gap-1 transition-colors border border-[#2f6d4f]/10 shadow-3xs"
-                            title="Làm bài tập trực tiếp trên đề bài"
+                            onClick={() => openExerciseWorkspace(m.content, m.id, false)}
+                            className="p-1 px-2 rounded-lg text-[10px] font-extrabold text-[#2f6d4f] bg-emerald-50 hover:bg-emerald-100 flex items-center gap-1.5 transition-all border border-[#2f6d4f]/20 shadow-3xs hover:shadow-2xs"
+                            title={isSubmitted ? "Redo this exercise with clean questions sheet" : "Solve exercises directly on interactive sheet"}
                           >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
-                            <span className="text-[9px] uppercase tracking-wider">Làm bài tập</span>
-                          </button>
-
-                          {/* Download exercises button */}
-                          <button
-                            onClick={() => exportMessageExercises(m.content)}
-                            className="p-1 px-1.5 rounded-md text-[10px] font-semibold text-[#5d6d64] hover:text-[#14251d] hover:bg-gray-100 flex items-center gap-1 transition-colors border border-[#14251d]/10 shadow-3xs"
-                            title="Export exercises to .txt file"
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            <span className="text-[9px] uppercase tracking-wider">Tải về</span>
+                            <span className="text-[9px] uppercase tracking-wider">
+                              {isSubmitted ? "REDO EXERCISES" : "SOLVE EXERCISES"}
+                            </span>
                           </button>
                         </div>
                       )}

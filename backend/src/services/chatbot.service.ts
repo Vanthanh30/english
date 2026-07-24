@@ -10,13 +10,33 @@ import type { ChatMessageModel } from '../models/chatbot.model';
 @Injectable()
 export class ChatbotService {
   private readonly genAI: GoogleGenerativeAI;
-  private readonly systemInstruction = `You are a friendly and educational AI English Tutor for the English Quest learning platform. 
-Your goal is to help the user learn and practice English. 
-Provide helpful, clear, and educational responses. 
-Always analyze the user's message. If their message contains any grammar, vocabulary, or spelling mistakes, politely point it out, explain why it is incorrect, and suggest a correct or more natural phrasing in a encouraging, supportive tone.
-Explain grammar rules, collocations, common idioms, or vocabulary usage if asked.
-You can respond in Vietnamese to explain English concepts when the user asks or appears to struggle, but keep the learning content focused on English.
-Keep your responses safe, encouraging, educational, and relatively concise.`;
+  private readonly systemInstruction = `You are a friendly, intelligent, encouraging, and natural AI English Tutor named QuestTutor for the English Quest learning platform. 
+
+DYNAMIC & ADAPTIVE RESPONSE RULES:
+
+1. CONVERSATIONAL & CHAT MODE (Khi người dùng giao tiếp, chào hỏi, tâm sự, hoặc nói chuyện tiếng Anh):
+- Respond naturally, warmly, and conversationally like a real AI tutor.
+- If the user greets you (e.g., "chào bạn", "hello", "hi", "tôi muốn luyện tập với bạn"), greet them back warmly, ask how they are doing, and ask what specific English topic or skill (Grammar, Vocabulary, Speaking, or Exercises) they would like to practice today.
+- Do NOT generate rigid exercise blocks or structured templates when the user is simply chatting or greeting you!
+
+2. KNOWLEDGE & GRAMMAR EXPLANATION MODE (Khi người dùng hỏi giải thích lý thuyết/ngữ pháp):
+- ALWAYS explain grammar rules, tenses, vocabulary, collocations, idioms, or sentence corrections IN VIETNAMESE (Giải thích tri thức/kiến thức bằng tiếng Việt rõ ràng, dễ hiểu cho người Việt).
+- Provide English example sentences with Vietnamese translations.
+
+3. EXERCISE & PRACTICE GENERATION MODE (CHỈ khi người dùng yêu cầu bài tập / muốn luyện tập bài tập):
+- ONLY generate structured practice exercises when the user explicitly asks for exercises or practice (e.g. "Cho tôi bài tập", "Tôi muốn làm bài tập", "Give me exercises", "Cho bài tập điền từ").
+- IMPORTANT: Whenever generating practice exercises, you MUST ALWAYS include a concise Grammar Knowledge Overview IN VIETNAMESE (Cung cấp tóm tắt kiến thức/công thức ngữ pháp tiếng Việt) BEFORE listing the practice questions! This allows the student to reference the knowledge on the left pane (Exercise Sheet) while solving questions.
+
+Structure exercise responses like this:
+---
+### 📖 Kiến thức & Công thức cần nhớ (Grammar Overview):
+[Tóm tắt công thức, quy tắc cách dùng và dấu hiệu nhận biết bằng tiếng Việt...]
+
+---
+### 📝 Bài tập luyện tập (Practice Exercises):
+[Provide 3 to 5 clear numbered questions (Multiple choice with A, B, C, D options OR Fill-in-the-blank with "______" and verb cues in parentheses)].
+
+Always maintain an encouraging, supportive, and adaptable tone.`;
 
   constructor(
     @Inject(CHATBOT_REPOSITORY)
@@ -149,36 +169,118 @@ Please grade the user's exercises/answers in detail. Correct any errors, assign 
     return savedAiMessage;
   }
 
-  private async callGemini(history: ChatMessageModel[]): Promise<string> {
-    try {
-      // Get the model
-      const model = this.genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        systemInstruction: this.systemInstruction,
-      });
-
-      // Format history for Gemini chat API.
-      // Gemini expects format: { role: 'user' | 'model', parts: [{ text: string }] }
-      // We will exclude the last message because we will pass it to sendMessage.
-      const chatHistory = history.slice(0, -1).map((msg) => ({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.content }],
-      }));
-
-      const lastMessage = history[history.length - 1];
-
-      // Start chat with history
-      const chat = model.startChat({
-        history: chatHistory,
-      });
-
-      // Send the last message
-      const result = await chat.sendMessage(lastMessage.content);
-      const response = await result.response;
-      return response.text();
-    } catch (error: any) {
-      console.error('Gemini API Error:', error);
-      throw new Error(`AI processing failed: ${error.message || error}`);
+  private validateApiKey(): void {
+    const apiKey = (this.configService.get<string>('GEMINI_API_KEY') || '').trim();
+    if (!apiKey || apiKey.length < 10) {
+      throw new BadRequestException(
+        'GEMINI_API_KEY chưa được cấu hình! Vui lòng cập nhật API key trong file backend/.env.'
+      );
     }
   }
+
+  private formatGeminiError(error: any): string {
+    const msg = String(error?.message || error || '');
+    if (
+      msg.includes('429') ||
+      msg.includes('Quota exceeded') ||
+      msg.toLowerCase().includes('too many requests') ||
+      msg.includes('RESOURCE_EXHAUSTED')
+    ) {
+      return 'Tài khoản Gemini API của bạn đang tạm thời đạt giới hạn số lượt gọi trong 1 phút (Rate Limit: 15 lượt/phút). Vui lòng chờ khoảng 15 - 30 giây rồi gửi lại.';
+    }
+    if (
+      msg.includes('API_KEY_INVALID') ||
+      msg.toLowerCase().includes('api key not valid')
+    ) {
+      return 'GEMINI_API_KEY không hợp lệ hoặc bị vô hiệu hóa. Vui lòng kiểm tra lại cấu hình API Key trong file backend/.env.';
+    }
+    return msg;
+  }
+
+  private sanitizeGeminiHistory(history: ChatMessageModel[]): { role: 'user' | 'model'; parts: { text: string }[] }[] {
+    const formattedHistory: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
+
+    for (const msg of history) {
+      const text = msg.content?.trim();
+      if (!text) continue;
+
+      const role: 'user' | 'model' = msg.role === 'user' ? 'user' : 'model';
+
+      // History for Gemini must start with 'user'
+      if (formattedHistory.length === 0 && role !== 'user') {
+        continue;
+      }
+
+      // Enforce strict role alternation
+      if (formattedHistory.length > 0 && formattedHistory[formattedHistory.length - 1].role === role) {
+        formattedHistory[formattedHistory.length - 1].parts[0].text += `\n\n${text}`;
+      } else {
+        formattedHistory.push({
+          role,
+          parts: [{ text }],
+        });
+      }
+    }
+
+    return formattedHistory;
+  }
+
+  private async callGemini(history: ChatMessageModel[]): Promise<string> {
+    this.validateApiKey();
+
+    if (!history || history.length === 0) {
+      throw new BadRequestException('Tin nhắn gửi đi không được để trống');
+    }
+
+    // Keep at most last 12 history messages to reduce token count and avoid rate limits
+    const maxHistoryCount = 12;
+    const recentHistory = history.length > maxHistoryCount ? history.slice(-maxHistoryCount) : history;
+
+    const historyExceptLast = recentHistory.slice(0, -1);
+    const chatHistory = this.sanitizeGeminiHistory(historyExceptLast);
+
+    const lastMsgObj = history[history.length - 1];
+    const lastMessageText = lastMsgObj.content?.trim() || '';
+
+    if (!lastMessageText) {
+      throw new BadRequestException('Nội dung tin nhắn không được để trống');
+    }
+
+    const apiKey = this.configService.getOrThrow<string>('GEMINI_API_KEY');
+    const genAI = new GoogleGenerativeAI(apiKey);
+
+    // List of model candidates to try in order (ensures compatibility with Free Tier & new AQ. keys)
+    const modelCandidates = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.0-flash'];
+
+    let lastError: any = null;
+
+    for (const modelName of modelCandidates) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: this.systemInstruction,
+        });
+
+        const chat = model.startChat({
+          history: chatHistory,
+        });
+
+        const result = await chat.sendMessage(lastMessageText);
+        const response = await result.response;
+        return response.text();
+      } catch (error: any) {
+        lastError = error;
+        console.warn(`Model ${modelName} call failed, trying next fallback model... Error:`, error?.message);
+        // Continue loop to try next model candidate
+      }
+    }
+
+    console.error('Gemini API Error in Chatbot after all model attempts:', lastError);
+    const formattedMsg = this.formatGeminiError(lastError);
+    throw new BadRequestException(`Lỗi AI Chatbot: ${formattedMsg}`);
+  }
 }
+
+
+
+

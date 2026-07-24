@@ -10,10 +10,23 @@ import { chatbotApi, ChatSession, ChatMessage } from "@/services/chatbot.service
 // Simple custom Markdown parser
 function renderMarkdown(text: string) {
   if (!text) return "";
-  let html = text
+  
+  // Clean backslashes from underscores and LaTeX symbols before rendering
+  let cleanText = text
+    .replace(/\\_/g, "_")
+    .replace(/\$\\rightarrow\$/g, "→")
+    .replace(/\\rightarrow/g, "→");
+
+  let html = cleanText
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+
+  // Remove raw #, ##, ### markdown headers and replace with clean bold titles
+  html = html.replace(
+    /^\s*#{1,6}\s+(.+)$/gm,
+    '<div class="font-extrabold text-[#2f6d4f] text-sm my-2 pb-0.5 border-b border-[#2f6d4f]/10">$1</div>'
+  );
 
   // Code blocks: ```code```
   html = html.replace(
@@ -36,6 +49,24 @@ function renderMarkdown(text: string) {
 
   // Bullet points: - item or * item
   html = html.replace(/^\s*[-*]\s+(.+)$/gm, '<li class="ml-5 list-disc my-1">$1</li>');
+
+  // Highlight & bold question prompts (in đậm câu): e.g. 1. "...", Câu 1: ..., Question 1: ...
+  html = html.replace(
+    /^(\s*(?:(?:Question|Câu)\s+)?\d+\s*[\.\:\)]\s*)(.+)$/gim,
+    '<div class="font-bold text-[#14251d] text-sm my-1.5 leading-relaxed">$1<span class="font-extrabold text-[#2f6d4f]">$2</span></div>'
+  );
+
+  // Format multiple choice options A., B., C., D.
+  html = html.replace(
+    /^([A-D])\.\s+(.+)$/gim,
+    '<div class="my-1 pl-3 font-semibold text-[#2f6d4f]">$1. <span class="text-[#14251d] font-normal">$2</span></div>'
+  );
+
+  // Replace sequences of underscores (3 or more) with a styled dashed blank space element
+  html = html.replace(
+    /_{3,}/g,
+    '<span class="inline-block border-b border-dashed border-[#2f6d4f]/60 min-w-[70px] mx-1 h-3 align-middle"></span>'
+  );
 
   // Paragraphs / line breaks
   html = html.replace(/\n/g, "<br />");
@@ -63,11 +94,11 @@ export function ChatbotPage() {
   const starterPrompts = [
     {
       label: "Explain Grammar",
-      text: "Explain the difference between Present Perfect and Past Simple grammar tenses.",
+      text: "Giải thích sự khác nhau giữa Thì Hiện tại hoàn thành và Quá khứ đơn bằng tiếng Việt, sau đó cho 3 câu bài tập đục lỗ để tôi làm.",
     },
     {
       label: "Correct My Sentence",
-      text: "Correct this sentence and explain why: 'I have went to the market yesterday for buying some fruits.'",
+      text: "Sửa lỗi câu sau và giải thích bằng tiếng Việt: 'I have went to the market yesterday for buying some fruits.', sau đó cho bài tập đục lỗ luyện tập.",
     },
     {
       label: "Conversation Practice",

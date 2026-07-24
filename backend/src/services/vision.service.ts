@@ -36,11 +36,14 @@ export class VisionService {
 
   private formatGeminiError(error: any): string {
     const message = String(error?.message || error || '');
+    if (message.includes('limit: 0') || (message.includes('Quota exceeded') && message.includes('limit: 0'))) {
+      return 'Gemini API key has zero quota allocated or is invalid format (OAuth token instead of AI Studio key). Please get a key starting with AIzaSy... from https://aistudio.google.com/app/apikey.';
+    }
     if (message.includes('429') || message.includes('Quota exceeded') || message.toLowerCase().includes('too many requests')) {
       return 'Rate limit exceeded. The Gemini API free tier allows up to 20 requests per minute. Please wait a few seconds and try again.';
     }
     if (message.includes('API_KEY_INVALID') || message.toLowerCase().includes('api key')) {
-      return 'Invalid Gemini API key. Please check your server configuration.';
+      return 'Invalid Gemini API key. Please check your server configuration (backend/.env).';
     }
     return message;
   }
@@ -85,10 +88,10 @@ export class VisionService {
 
     // 2. Call Gemini Vision
     let words = [];
-    try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-      
-      const prompt = `Identify the primary objects, concepts, or activities visible in the uploaded image. 
+    let lastError: any = null;
+    const modelCandidates = ['gemini-flash-latest', 'gemini-2.0-flash'];
+
+    const prompt = `Identify the primary objects, concepts, or activities visible in the uploaded image. 
 Generate a list of 5 to 8 useful English vocabulary words related to these elements. 
 For each word, provide:
 1. "word": The English word/phrase (be specific, clean, and lowercased where appropriate, e.g. "coffee mug" or "laptop").
@@ -114,39 +117,50 @@ Output must be a valid JSON array of objects following this structure:
   }
 ]`;
 
-      const response = await model.generateContent({
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              { text: prompt },
-              {
-                inlineData: {
-                  data: file.buffer.toString('base64'),
-                  mimeType: file.mimetype,
+    for (const modelName of modelCandidates) {
+      try {
+        const model = this.genAI.getGenerativeModel({ model: modelName });
+        const response = await model.generateContent({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    data: file.buffer.toString('base64'),
+                    mimeType: file.mimetype,
+                  },
                 },
-              },
-            ],
+              ],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json',
           },
-        ],
-        generationConfig: {
-          responseMimeType: 'application/json',
-        },
-      });
+        });
 
-      const responseText = response.response.text();
-      words = JSON.parse(responseText);
+        const responseText = response.response.text();
+        words = JSON.parse(responseText);
 
-      if (!Array.isArray(words)) {
-        throw new Error('Gemini did not return an array');
+        if (!Array.isArray(words)) {
+          throw new Error('Gemini did not return an array');
+        }
+        lastError = null;
+        break;
+      } catch (error: any) {
+        lastError = error;
+        console.warn(`Vision model ${modelName} call failed, trying fallback... Error:`, error?.message);
       }
-    } catch (error: any) {
-      console.error('Gemini Vision API Error:', error);
+    }
+
+    if (lastError) {
+      console.error('Gemini Vision API Error:', lastError);
       // Clean up Cloudinary upload in case of analysis failure
       if (uploadedImage?.publicId) {
         await this.cloudinary.delete(uploadedImage.publicId).catch(() => undefined);
       }
-      throw new BadRequestException(`AI image analysis failed: ${this.formatGeminiError(error)}`);
+      throw new BadRequestException(`AI image analysis failed: ${this.formatGeminiError(lastError)}`);
     }
 
     // 3. Save to database history
@@ -294,37 +308,37 @@ Output must be a valid JSON array of objects following this structure:
 
     // 2. Call Gemini Vision
     let wordData: any;
-    try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-      
-      let coordinatePrompt = '';
-      if (xMin !== undefined && yMin !== undefined && xMax !== undefined && yMax !== undefined) {
-        // Convert percentage boundaries (0-100) to Gemini's native normalized range (0-1000)
-        const ymin = Math.round(yMin * 10);
-        const xmin = Math.round(xMin * 10);
-        const ymax = Math.round(yMax * 10);
-        const xmax = Math.round(xMax * 10);
+    let lastError: any = null;
+    const modelCandidates = ['gemini-flash-latest', 'gemini-2.0-flash'];
 
-        coordinatePrompt = `You are a spatial grounding model. Locate the object inside the normalized bounding box: [${ymin}, ${xmin}, ${ymax}, ${xmax}]
+    let coordinatePrompt = '';
+    if (xMin !== undefined && yMin !== undefined && xMax !== undefined && yMax !== undefined) {
+      // Convert percentage boundaries (0-100) to Gemini's native normalized range (0-1000)
+      const ymin = Math.round(yMin * 10);
+      const xmin = Math.round(xMin * 10);
+      const ymax = Math.round(yMax * 10);
+      const xmax = Math.round(xMax * 10);
+
+      coordinatePrompt = `You are a spatial grounding model. Locate the object inside the normalized bounding box: [${ymin}, ${xmin}, ${ymax}, ${xmax}]
 (where coordinates are normalized to 1000, in the format [ymin, xmin, ymax, xmax], with [0, 0, 1000, 1000] representing the entire image).
 
 Focus strictly on the visual content located inside this bounding box: [${ymin}, ${xmin}, ${ymax}, ${xmax}]. Identify the single, most specific object, bird, or animal located directly within this crop boundary box. Do not describe background elements or prominent objects located elsewhere in the image (such as elephants, giraffes, or sofas) unless they are directly inside this selected box.`;
-      } else {
-        // Convert point coordinates to a small bounding box on 0-1000 scale
-        const targetY = finalY * 10;
-        const targetX = finalX * 10;
-        const ymin = Math.max(0, targetY - 20);
-        const xmin = Math.max(0, targetX - 20);
-        const ymax = Math.min(1000, targetY + 20);
-        const xmax = Math.min(1000, targetX + 20);
+    } else {
+      // Convert point coordinates to a small bounding box on 0-1000 scale
+      const targetY = finalY * 10;
+      const targetX = finalX * 10;
+      const ymin = Math.max(0, targetY - 20);
+      const xmin = Math.max(0, targetX - 20);
+      const ymax = Math.min(1000, targetY + 20);
+      const xmax = Math.min(1000, targetX + 20);
 
-        coordinatePrompt = `You are a spatial grounding model. Locate the object at the normalized coordinates: [${targetY}, ${targetX}], which is centered inside the small normalized bounding box: [${ymin}, ${xmin}, ${ymax}, ${xmax}]
+      coordinatePrompt = `You are a spatial grounding model. Locate the object at the normalized coordinates: [${targetY}, ${targetX}], which is centered inside the small normalized bounding box: [${ymin}, ${xmin}, ${ymax}, ${xmax}]
 (where coordinates are normalized to 1000, in the format [ymin, xmin, ymax, xmax], with [0, 0, 1000, 1000] representing the entire image).
 
 Focus strictly on the visual content centered at these coordinates. Identify the single, most specific object, bird, or animal located inside the bounding box [${ymin}, ${xmin}, ${ymax}, ${xmax}]. Do not confuse it with larger, more prominent objects located elsewhere in the image (such as elephants, giraffes, or sofas) unless they are centered directly at this coordinate point.`;
-      }
+    }
 
-      const prompt = `${coordinatePrompt}
+    const prompt = `${coordinatePrompt}
 Generate its English vocabulary word, type, pronunciation (IPA), English definition, Vietnamese translation, and a simple example sentence.
 
 Output MUST be a valid JSON object matching the following structure:
@@ -337,31 +351,42 @@ Output MUST be a valid JSON object matching the following structure:
   "exampleSentence": "..."
 }`;
 
-      const response = await model.generateContent({
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              { text: prompt },
-              {
-                inlineData: {
-                  data: imageBuffer.toString('base64'),
-                  mimeType: mimeType,
+    for (const modelName of modelCandidates) {
+      try {
+        const model = this.genAI.getGenerativeModel({ model: modelName });
+        const response = await model.generateContent({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    data: imageBuffer.toString('base64'),
+                    mimeType: mimeType,
+                  },
                 },
-              },
-            ],
+              ],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json',
           },
-        ],
-        generationConfig: {
-          responseMimeType: 'application/json',
-        },
-      });
+        });
 
-      const responseText = response.response.text();
-      wordData = JSON.parse(responseText);
-    } catch (error: any) {
-      console.error('Gemini Vision Click API Error:', error);
-      throw new BadRequestException(`AI point identification failed: ${this.formatGeminiError(error)}`);
+        const responseText = response.response.text();
+        wordData = JSON.parse(responseText);
+        lastError = null;
+        break;
+      } catch (error: any) {
+        lastError = error;
+        console.warn(`Vision click model ${modelName} call failed, trying fallback... Error:`, error?.message);
+      }
+    }
+
+    if (lastError) {
+      console.error('Gemini Vision Click API Error:', lastError);
+      throw new BadRequestException(`AI point identification failed: ${this.formatGeminiError(lastError)}`);
     }
 
     // 3. Save new word to DB
