@@ -8,6 +8,7 @@ export function Sidebar() {
         <Link href="/flashcards">Flashcards</Link>
         <Link href="/flashcards/practice">Writing Practice</Link>
         <Link href="/game">Vocabulary Game</Link>
+        <Link href="/image-writing">AI Image Writing</Link>
       </nav>
     </aside>
   );

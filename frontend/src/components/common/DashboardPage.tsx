@@ -264,19 +264,19 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            <Link href="/vision" className="dashboard-card tool-card">
+            <Link href="/image-writing" className="dashboard-card tool-card">
               <div className="tool-card-header">
-                <span className="tool-card-icon">📷</span>
-                <span className="tool-card-badge info">Vision AI</span>
+                <span className="tool-card-icon">✍️</span>
+                <span className="tool-card-badge info">Writing Coach</span>
               </div>
               <div>
-                <h3>Image Recognition</h3>
+                <h3>Image Writing Practice</h3>
                 <p>
-                  Upload real-world images and have Vision AI automatically generate vocabulary lists and translations to study.
+                  Upload real-world images and write description in English. AI evaluates accuracy, highlights grammar errors, and suggests new vocabulary.
                 </p>
               </div>
               <span className="tool-card-footer">
-                Start scanning &rarr;
+                Start practice &rarr;
               </span>
             </Link>
 

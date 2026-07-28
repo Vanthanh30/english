@@ -12,7 +12,7 @@ import { FlashcardModule } from './routes/flashcard.routes';
 import { GameModule } from './routes/game.routes';
 import { ReadingModule } from './routes/reading.routes';
 import { ChatbotModule } from './routes/chatbot.routes';
-import { VisionModule } from './routes/vision.routes';
+import { ImageWritingModule } from './routes/image-writing.routes';
 
 @Module({
   imports: [
@@ -65,7 +65,7 @@ import { VisionModule } from './routes/vision.routes';
     GameModule,
     ReadingModule,
     ChatbotModule,
-    VisionModule,
+    ImageWritingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

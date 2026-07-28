@@ -1,39 +1,7 @@
 import { API_URL } from "./api";
 import { authApi } from "./auth.service";
 import { useAuthStore } from "@/stores/auth.store";
-
-export interface VisionWord {
-  id: string;
-  historyId: string;
-  word: string;
-  meaning: string;
-  meaningVi: string | null;
-  pronunciation: string | null;
-  partOfSpeech: string | null;
-  exampleSentence: string | null;
-  saved: boolean;
-  x: number | null;
-  y: number | null;
-}
-
-export interface VisionHistory {
-  id: string;
-  userId: string;
-  imageUrl: string;
-  imagePublicId: string | null;
-  createdAt: string;
-  words: VisionWord[];
-}
-
-export interface SaveVisionWordInput {
-  wordId: string;
-  word: string;
-  meaning: string;
-  meaningVi?: string;
-  pronunciation?: string;
-  partOfSpeech?: string;
-  exampleSentence?: string;
-}
+import type { ImageWritingSession, NewVocabularyItem } from "@/types";
 
 async function getAccessToken(): Promise<string> {
   const state = useAuthStore.getState();
@@ -43,7 +11,7 @@ async function getAccessToken(): Promise<string> {
   return session.accessToken;
 }
 
-async function visionRequest<T>(
+async function imageWritingRequest<T>(
   path: string,
   options: RequestInit = {},
   retry = true,
@@ -75,7 +43,7 @@ async function visionRequest<T>(
     try {
       const session = await authApi.refresh();
       useAuthStore.getState().setSession(session);
-      return visionRequest<T>(path, options, false);
+      return imageWritingRequest<T>(path, options, false);
     } catch (error) {
       useAuthStore.getState().clearSession();
       throw error;
@@ -96,45 +64,54 @@ async function visionRequest<T>(
   return (await response.json()) as T;
 }
 
-export const visionApi = {
-  analyzeImage(file: File) {
+export const imageWritingApi = {
+  submit(file: File, userText: string) {
     const formData = new FormData();
     formData.append("file", file);
-    return visionRequest<VisionHistory>("/vision/analyze", {
+    formData.append("userText", userText);
+    return imageWritingRequest<ImageWritingSession>("/image-writing/submit", {
       method: "POST",
       body: formData,
     });
   },
 
-  listHistory() {
-    return visionRequest<VisionHistory[]>("/vision/history");
+  resubmit(id: string, revisedText: string) {
+    return imageWritingRequest<ImageWritingSession>(`/image-writing/${id}/resubmit`, {
+      method: "POST",
+      body: JSON.stringify({ revisedText }),
+    });
   },
 
-  deleteHistory(id: string) {
-    return visionRequest<void>(`/vision/history/${id}`, {
+  listHistory() {
+    return imageWritingRequest<ImageWritingSession[]>("/image-writing");
+  },
+
+  getSession(id: string) {
+    return imageWritingRequest<ImageWritingSession>(`/image-writing/${id}`);
+  },
+
+  deleteSession(id: string) {
+    return imageWritingRequest<void>(`/image-writing/${id}`, {
       method: "DELETE",
     });
   },
 
-  saveWords(words: SaveVisionWordInput[]) {
-    return visionRequest<{ success: boolean; saved: any[] }>("/vision/save", {
+  saveVocab(vocab: {
+    word: string;
+    meaning: string;
+    meaningVi?: string;
+    pronunciation?: string;
+    partOfSpeech?: string;
+    exampleSentence?: string;
+  }) {
+    return imageWritingRequest<{
+      success: boolean;
+      alreadySaved: boolean;
+      word: string;
+      flashcardId: string;
+    }>("/image-writing/save-vocab", {
       method: "POST",
-      body: JSON.stringify({ words }),
-    });
-  },
-
-  analyzeClick(
-    historyId: string,
-    x?: number,
-    y?: number,
-    xMin?: number,
-    yMin?: number,
-    xMax?: number,
-    yMax?: number,
-  ) {
-    return visionRequest<VisionWord>(`/vision/history/${historyId}/click`, {
-      method: "POST",
-      body: JSON.stringify({ x, y, xMin, yMin, xMax, yMax }),
+      body: JSON.stringify(vocab),
     });
   },
 };

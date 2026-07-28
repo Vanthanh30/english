@@ -53,7 +53,7 @@ model User {
   vocabularyHighlights   VocabularyHighlight[]
   readingNotes           ReadingNote[]
   chatSessions           ChatSession[]
-  visionHistories        VisionHistory[]
+  imageWritingSessions   ImageWritingSession[]
 
   @@index([status])
 }
@@ -355,33 +355,26 @@ model ChatMessage {
   @@index([sessionId, createdAt])
 }
 
-model VisionHistory {
-  id            String       @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String       @db.ObjectId
-  imageUrl      String
-  imagePublicId String?
-  createdAt     DateTime     @default(now())
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  words         VisionWord[]
+model ImageWritingSession {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String   @db.ObjectId
+  imageUrl          String
+  imagePublicId     String?
+  userText          String
+  revisedText       String?
+  overallScore      Int
+  accuracyFeedback  String
+  grammarFeedback   Json     // array of { error: string, correction: string, explanation: string }
+  improvedParagraph String
+  newVocabulary     Json     // array of { word: string, partOfSpeech: string, vietnameseMeaning: string, exampleSentence: string }
+  grammarPatterns   Json     // array of { pattern: string, explanation: string, example: string }
+  revisedScore      Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
-}
-
-model VisionWord {
-  id              String        @id @default(auto()) @map("_id") @db.ObjectId
-  historyId       String        @db.ObjectId
-  word            String
-  meaning         String
-  meaningVi       String?
-  pronunciation   String?
-  partOfSpeech    String?
-  exampleSentence String?
-  saved           Boolean       @default(false)
-  x               Int?
-  y               Int?
-  history         VisionHistory @relation(fields: [historyId], references: [id], onDelete: Cascade)
-
-  @@index([historyId])
 }
 
 
