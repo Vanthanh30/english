@@ -16,7 +16,7 @@ export default function AdminListeningCreatePage() {
   const [description, setDescription] = useState("");
   const [level, setLevel] = useState<ContentLevel>("BEGINNER");
   const [sourceType, setSourceType] = useState<"audio" | "youtube">("audio");
-  
+
   // Custom Settings
   const [status, setStatus] = useState<"DRAFT" | "PUBLISHED">("DRAFT");
   const [studyMode, setStudyMode] = useState<"both" | "full" | "blank">("both");
@@ -31,7 +31,7 @@ export default function AdminListeningCreatePage() {
       setActiveHints([...activeHints, hint]);
     }
   };
-  
+
   // Audio upload state
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState("");
@@ -212,15 +212,15 @@ export default function AdminListeningCreatePage() {
         <div className="admin-sidebar-label">Workspace</div>
         <nav className="admin-side-nav" aria-label="Admin navigation">
           <Link href="/dashboard">
-            <svg fill="none" height="20" viewBox="0 0 24 24" width="20" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+            <svg fill="none" height="20" viewBox="0 0 24 24" width="20" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /></svg>
             Dashboard
           </Link>
           <Link href="/admin/content">
-            <svg fill="none" height="20" viewBox="0 0 24 24" width="20" stroke="currentColor" strokeWidth="1.8"><path d="M4 19V5M9 19V5M14 19V5"/><path d="m18 5 2 14"/></svg>
+            <svg fill="none" height="20" viewBox="0 0 24 24" width="20" stroke="currentColor" strokeWidth="1.8"><path d="M4 19V5M9 19V5M14 19V5" /><path d="m18 5 2 14" /></svg>
             Content library
           </Link>
           <Link href="/admin/listening" className="active">
-            <svg fill="none" height="20" viewBox="0 0 24 24" width="20" stroke="currentColor" strokeWidth="1.8"><path d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+            <svg fill="none" height="20" viewBox="0 0 24 24" width="20" stroke="currentColor" strokeWidth="1.8"><path d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
             Dictation CMS
           </Link>
         </nav>
@@ -276,7 +276,7 @@ export default function AdminListeningCreatePage() {
           {/* Exercise Info Card */}
           <div className="bg-[#1e293b]/40 border border-[#334155]/60 rounded-2xl p-6 flex flex-col gap-5">
             <h3 className="text-slate-200 font-bold text-base border-b border-[#334155] pb-2">1. Exercise General Info</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2">
                 <label className="block text-slate-300 text-xs font-semibold uppercase tracking-wider mb-2">Exercise Title</label>
@@ -318,7 +318,7 @@ export default function AdminListeningCreatePage() {
           {/* Settings Info Card */}
           <div className="bg-[#1e293b]/40 border border-[#334155]/60 rounded-2xl p-6 flex flex-col gap-5">
             <h3 className="text-slate-200 font-bold text-base border-b border-[#334155] pb-2">2. Exercise Configurations & Hint Rules</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-slate-300 text-xs font-semibold uppercase tracking-wider mb-2">Exercise Status</label>
@@ -414,28 +414,26 @@ export default function AdminListeningCreatePage() {
           <div className="bg-[#1e293b]/40 border border-[#334155]/60 rounded-2xl p-6 flex flex-col gap-6">
             <div className="flex items-center justify-between border-b border-[#334155] pb-2">
               <h3 className="text-slate-200 font-bold text-base">2. Audio / Video Source</h3>
-              
+
               {/* Mode Toggle */}
               <div className="flex bg-[#0f172a] rounded-lg p-0.5 border border-[#334155]">
                 <button
                   type="button"
                   onClick={() => setSourceType("audio")}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                    sourceType === "audio"
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${sourceType === "audio"
                       ? "bg-violet-600 text-white shadow"
                       : "text-slate-400 hover:text-slate-200"
-                  }`}
+                    }`}
                 >
                   Audio File Upload
                 </button>
                 <button
                   type="button"
                   onClick={() => setSourceType("youtube")}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                    sourceType === "youtube"
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${sourceType === "youtube"
                       ? "bg-violet-600 text-white shadow"
                       : "text-slate-400 hover:text-slate-200"
-                  }`}
+                    }`}
                 >
                   YouTube Link
                 </button>
