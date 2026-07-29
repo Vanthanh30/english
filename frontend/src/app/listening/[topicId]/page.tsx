@@ -648,7 +648,7 @@ export default function StudentListeningExercisePage() {
   const isCompleted = completedSentences.includes(activeSentence.id);
 
   return (
-    <main className="min-h-screen bg-[#0f172a] text-slate-100 font-sans pb-16">
+    <main className="dashboard-shell" style={{ marginTop: "20px" }}>
       {/* Invisible media players */}
       {topic.audioUrl && (
         <audio
@@ -683,30 +683,24 @@ export default function StudentListeningExercisePage() {
 
             {/* Study Mode Selector */}
             {!topic || topic.studyMode === "both" ? (
-              <div style={{ display: "flex", background: "#0f172a", borderRadius: "8px", padding: "2px", border: "1px solid #334155" }}>
+              <div style={{ display: "flex", background: "#edf1ed", borderRadius: "10px", padding: "3px" }}>
                 <button
                   type="button"
                   onClick={() => setStudyMode("full")}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${studyMode === "full"
-                      ? "bg-indigo-600 text-white shadow"
-                      : "text-slate-400 hover:text-slate-200"
-                    }`}
+                  className={`button button-small ${studyMode === "full" ? "" : "button-secondary"}`}
                 >
                   Full Type Sense
                 </button>
                 <button
                   type="button"
                   onClick={() => setStudyMode("blank")}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${studyMode === "blank"
-                      ? "bg-indigo-600 text-white shadow"
-                      : "text-slate-400 hover:text-slate-200"
-                    }`}
+                  className={`button button-small ${studyMode === "blank" ? "" : "button-secondary"}`}
                 >
                   Fill in Blank
                 </button>
               </div>
             ) : (
-              <span style={{ fontSize: "12px", fontWeight: 700, color: "#94a3b8", padding: "6px 12px", background: "#0f172a", border: "1px solid #334155", borderRadius: "8px", textTransform: "uppercase" }}>
+              <span className="profile-badge role">
                 {studyMode === "full" ? "Full Type Sense" : "Fill in Blank"}
               </span>
             )}
@@ -715,37 +709,33 @@ export default function StudentListeningExercisePage() {
       </header>
 
       {/* Workspace */}
-      <div className="max-w-4xl mx-auto px-6 mt-10">
+      <div style={{ maxWidth: "860px", margin: "32px auto 0", padding: "0 16px" }}>
 
         {/* Progress header */}
-        <div className="flex items-center justify-between mb-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px", fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
           <span>Sentence {currentIndex + 1} of {sentences.length}</span>
-          <span className="text-indigo-400 font-semibold">{Math.round(((currentIndex + 1) / sentences.length) * 100)}% Complete</span>
+          <span style={{ color: "var(--green)", fontWeight: 800 }}>{Math.round(((currentIndex + 1) / sentences.length) * 100)}% Complete</span>
         </div>
-        <div className="w-full bg-[#1e293b] rounded-full h-1.5 mb-8 border border-slate-800 overflow-hidden">
+        <div style={{ width: "100%", background: "#edf1ed", borderRadius: "999px", height: "8px", marginBottom: "32px", overflow: "hidden" }}>
           <div
-            className="bg-indigo-500 h-full rounded-full transition-all duration-300"
-            style={{ width: `${((currentIndex + 1) / sentences.length) * 100}%` }}
+            style={{ background: "#2f6d4f", height: "100%", borderRadius: "999px", width: `${((currentIndex + 1) / sentences.length) * 100}%`, transition: "all 0.3s" }}
           ></div>
         </div>
 
         {/* Audio controller card */}
-        <div className="bg-[#1e293b]/40 border border-[#334155]/60 rounded-3xl p-6 mb-8 flex flex-col items-center justify-center text-center shadow-lg relative overflow-hidden">
-          <div className="absolute right-0 top-0 -mt-8 -mr-8 w-36 h-36 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none"></div>
+        <div className="dashboard-card" style={{ padding: "28px", marginBottom: "28px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
 
           {/* Speed & Loop settings */}
-          <div className="flex items-center justify-between w-full mb-6">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: "20px" }}>
             {/* Speed selectors */}
-            <div className="flex bg-[#0f172a]/60 rounded-xl p-0.5 border border-[#334155]/60 text-[10px] font-bold">
+            <div style={{ display: "flex", background: "#edf1ed", borderRadius: "10px", padding: "3px", fontSize: "12px", fontWeight: 700 }}>
               {([0.5, 0.75, 1.0, 1.25] as number[]).map((spd) => (
                 <button
                   key={spd}
                   onClick={() => !(isAudioLocked || listenedCount >= (topic?.maxPlays || 5)) && handleSpeedChange(spd)}
                   disabled={isAudioLocked || listenedCount >= (topic?.maxPlays || 5)}
-                  className={`px-2.5 py-1 rounded-lg transition-all ${playbackSpeed === spd
-                      ? "bg-slate-700 text-white"
-                      : "text-slate-500 hover:text-slate-300"
-                    } disabled:opacity-30 disabled:cursor-not-allowed disabled:pointer-events-none`}
+                  className={`button button-small ${playbackSpeed === spd ? "" : "button-secondary"}`}
+                  style={{ padding: "4px 10px", fontSize: "11px" }}
                 >
                   {spd}x
                 </button>
@@ -754,25 +744,23 @@ export default function StudentListeningExercisePage() {
 
             {/* Loop Toggle */}
             <button
+              type="button"
               onClick={() => !(isAudioLocked || listenedCount >= (topic?.maxPlays || 5)) && setIsLooping(!isLooping)}
               disabled={isAudioLocked || listenedCount >= (topic?.maxPlays || 5)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-bold tracking-wider transition-all ${isLooping
-                  ? "bg-violet-600/10 border-violet-500/30 text-violet-400"
-                  : "bg-transparent border-slate-700/60 text-slate-500"
-                } disabled:opacity-30 disabled:cursor-not-allowed disabled:pointer-events-none`}
+              className={`button button-small ${isLooping ? "" : "button-outline"}`}
+              style={{ fontSize: "11px" }}
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3 3L22 4" /></svg>
-              LOOP SEGMENT
+              🔄 LOOP SEGMENT
             </button>
           </div>
 
           {/* Play/Pause Button */}
-          <div className="flex items-center justify-center gap-4 mb-4">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "16px", marginBottom: "16px" }}>
             <button
               onClick={handlePlayPause}
               disabled={isAudioLocked || listenedCount >= (topic?.maxPlays || 5)}
               title={isAudioLocked || listenedCount >= (topic?.maxPlays || 5) ? "Audio Locked - Max plays reached" : "Play / Pause"}
-              className="w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25 active:scale-95 transition-all disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none disabled:shadow-none"
+              style={{ width: "64px", height: "64px", borderRadius: "50%", background: isAudioLocked || listenedCount >= (topic?.maxPlays || 5) ? "#cbd5e1" : "linear-gradient(135deg, #2f6d4f, #214f3a)", color: "white", display: "grid", placeItems: "center", border: 0, cursor: isAudioLocked || listenedCount >= (topic?.maxPlays || 5) ? "not-allowed" : "pointer", boxShadow: "0 8px 24px rgba(47, 109, 79, 0.3)" }}
             >
               {isAudioLocked || listenedCount >= (topic?.maxPlays || 5) ? (
                 <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
@@ -786,49 +774,50 @@ export default function StudentListeningExercisePage() {
             <button
               onClick={handleReplaySegment}
               disabled={isAudioLocked || listenedCount >= (topic?.maxPlays || 5)}
-              className="p-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-2xl transition-all border border-[#334155]/60 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:pointer-events-none"
+              className="button button-outline"
+              style={{ width: "48px", height: "48px", borderRadius: "14px", display: "grid", placeItems: "center", padding: 0 }}
               title={isAudioLocked || listenedCount >= (topic?.maxPlays || 5) ? "Audio Locked" : "Replay Sentence segment"}
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89" /></svg>
             </button>
           </div>
 
-          <span className="text-[10px] text-slate-500 uppercase tracking-widest font-black">
-            Mistakes in segment: <span className="text-rose-400">{errorCount}</span> | Plays: <span className="text-indigo-400">{listenedCount}</span>
+          <span style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
+            Mistakes in segment: <span style={{ color: "#dc2626" }}>{errorCount}</span> | Plays: <span style={{ color: "var(--green)" }}>{listenedCount}</span>
           </span>
         </div>
 
-        {/* Input area */}
-        <div className="bg-[#1e293b]/40 border border-[#334155]/60 rounded-3xl p-8 mb-8 shadow-lg">
+        {/* Input area card */}
+        <div className="dashboard-card" style={{ padding: "28px", marginBottom: "28px" }}>
 
           {studyMode === "full" ? (
             /* Full Type Sense typing engine */
-            <div className="flex flex-col gap-6">
-              <div className="text-center min-h-[4rem] flex items-center justify-center flex-wrap gap-x-2 gap-y-3 p-4 bg-[#0f172a]/60 rounded-2xl border border-slate-800 shadow-inner">
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <div style={{ textAlign: "center", minHeight: "4rem", display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap", gap: "8px", padding: "16px", background: "#f8faf7", border: "1px solid #dfe5df", borderRadius: "16px" }}>
                 {activeSentence.text.split(/\s+/).map((word, wordIdx) => {
                   const prevWordsLength = activeSentence.text.split(/\s+/).slice(0, wordIdx).join(" ").length + (wordIdx > 0 ? 1 : 0);
 
                   return (
-                    <span key={wordIdx} className="inline-flex gap-x-0.5 text-lg font-bold font-mono tracking-wide">
+                    <span key={wordIdx} style={{ display: "inline-flex", gap: "2px", fontSize: "18px", fontWeight: 800, fontFamily: "monospace" }}>
                       {word.split("").map((char, charIdx) => {
                         const globalIdx = prevWordsLength + charIdx;
                         const hasTyped = typedText.length > globalIdx;
                         const isCharCorrect = hasTyped && typedText[globalIdx]?.toLowerCase() === char.toLowerCase();
 
-                        const highlightStyle = (showErrorHighlight && isHintsUnlocked)
+                        const colorStyle = (showErrorHighlight && isHintsUnlocked)
                           ? isCharCorrect
-                            ? "text-emerald-400 border-emerald-500"
+                            ? "#16a34a"
                             : hasTyped
-                              ? "text-rose-400 border-rose-500 animate-shake"
-                              : "text-transparent border-slate-800"
+                              ? "#dc2626"
+                              : "transparent"
                           : hasTyped
-                            ? "text-slate-100 border-indigo-500"
-                            : "text-transparent border-slate-800";
+                            ? "#14251d"
+                            : "transparent";
 
                         return (
                           <span
                             key={charIdx}
-                            className={`border-b-2 transition-all ${highlightStyle}`}
+                            style={{ borderBottom: "2px solid #cbd5e1", color: colorStyle, minWidth: "12px", textAlign: "center" }}
                           >
                             {hasTyped ? typedText[globalIdx] : "."}
                           </span>
@@ -852,62 +841,56 @@ export default function StudentListeningExercisePage() {
                     }
                   }}
                   disabled={isFullCorrect || isAnswerRevealed}
-                  className={`w-full px-4 py-3 bg-[#0f172a] border rounded-2xl text-slate-100 placeholder-slate-600 focus:outline-none text-sm transition-all h-20 resize-none font-mono ${isFullCorrect
-                      ? "border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500/20"
-                      : isAnswerRevealed
-                        ? "border-rose-500/50 bg-[#1e293b]/30 cursor-not-allowed opacity-50"
-                        : "border-[#334155] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                    }`}
+                  className="form-input"
+                  style={{ width: "100%", height: "80px", resize: "none", fontFamily: "monospace", padding: "12px 16px" }}
                 />
               </div>
 
               {/* Action buttons (Check Answer & Hint popover) */}
               {!(isFullCorrect || isAnswerRevealed) && (
-                <div className="flex items-center justify-end gap-3 mt-3">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", marginTop: "16px" }}>
                   {/* Single Hint button when threshold reached */}
                   {isHintsUnlocked && (
-                    <div className="relative" ref={hintMenuRef}>
+                    <div style={{ position: "relative" }} ref={hintMenuRef}>
                       <button
                         type="button"
                         onClick={() => setIsHintMenuOpen((prev) => !prev)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 border active:scale-95 ${isHintMenuOpen
-                            ? "bg-amber-500 border-amber-400 text-slate-950 font-black shadow-amber-500/20"
-                            : "bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/40 text-amber-300"
-                          }`}
+                        className="button button-small button-outline"
+                        style={{ display: "flex", alignItems: "center", gap: "6px" }}
                       >
-                        <span className="text-sm">💡</span>
+                        <span>💡</span>
                         <span>{isHintMenuOpen ? "Close Hint" : "Hint"}</span>
                       </button>
 
                       {/* Floating Hint Popover */}
                       {isHintMenuOpen && (
-                        <div className="absolute right-0 bottom-full mb-3 w-80 md:w-96 bg-[#1e293b] border border-amber-500/40 rounded-2xl p-4 shadow-2xl z-50 animate-fade-in backdrop-blur-xl">
-                          <div className="flex items-center justify-between border-b border-slate-700/60 pb-2 mb-3">
-                            <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5 uppercase tracking-wide">
+                        <div style={{ position: "absolute", right: 0, bottom: "100%", marginBottom: "12px", width: "360px", background: "white", border: "1px solid #dce5dc", borderRadius: "16px", padding: "16px", boxShadow: "0 12px 36px rgba(0,0,0,0.12)", zIndex: 50 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #edf0ed", paddingBottom: "8px", marginBottom: "12px" }}>
+                            <span style={{ fontSize: "12px", fontWeight: 800, color: "#173f2d", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: "6px" }}>
                               💡 Available Hints
                             </span>
                             <button
                               type="button"
                               onClick={() => setIsHintMenuOpen(false)}
-                              className="text-slate-400 hover:text-slate-200 text-xs font-bold px-1"
+                              style={{ background: "transparent", border: 0, color: "#718078", fontWeight: 800, cursor: "pointer" }}
                             >
                               ✕
                             </button>
                           </div>
 
                           {/* Hint Display Content */}
-                          <div className="flex flex-col gap-2.5 max-h-60 overflow-y-auto">
+                          <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxHeight: "240px", overflowY: "auto" }}>
                             {(!topic || !topic.activeHints || topic.activeHints.includes("vietnamese")) && activeSentence?.vietnameseTranslation && (
-                              <div className="p-3 bg-[#0f172a] border border-amber-500/20 rounded-xl">
-                                <span className="block text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">Gợi ý tiếng Việt</span>
-                                <p className="text-xs text-slate-200 italic">"{activeSentence.vietnameseTranslation}"</p>
+                              <div style={{ padding: "12px", background: "#f8faf7", border: "1px solid #dfe5df", borderRadius: "12px" }}>
+                                <span style={{ display: "block", fontSize: "10px", fontWeight: 800, color: "var(--green)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Gợi ý tiếng Việt</span>
+                                <p style={{ margin: 0, fontSize: "13px", color: "#173f2d", fontStyle: "italic" }}>"{activeSentence.vietnameseTranslation}"</p>
                               </div>
                             )}
 
                             {(!topic || !topic.activeHints || topic.activeHints.includes("first_letter")) && (
-                              <div className="p-3 bg-[#0f172a] border border-amber-500/20 rounded-xl">
-                                <span className="block text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">Gợi ý chữ cái đầu</span>
-                                <div className="flex flex-wrap text-xs font-mono">{renderFirstLetterHint()}</div>
+                              <div style={{ padding: "12px", background: "#f8faf7", border: "1px solid #dfe5df", borderRadius: "12px" }}>
+                                <span style={{ display: "block", fontSize: "10px", fontWeight: 800, color: "var(--green)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Gợi ý chữ cái đầu</span>
+                                <div style={{ display: "flex", flexWrap: "wrap", fontSize: "13px", fontFamily: "monospace", color: "#173f2d" }}>{renderFirstLetterHint()}</div>
                               </div>
                             )}
                           </div>
@@ -920,9 +903,8 @@ export default function StudentListeningExercisePage() {
                   <button
                     type="button"
                     onClick={checkAnswer}
-                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-all shadow-md active:scale-95 flex items-center gap-1.5"
+                    className="button button-small"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                     Check Answer ({errorCount}/{topic?.maxPlays || 5})
                   </button>
                 </div>
@@ -930,14 +912,14 @@ export default function StudentListeningExercisePage() {
             </div>
           ) : (
             /* Fill in the Blank mode */
-            <div className="flex flex-col gap-6">
-              <div className="leading-relaxed flex flex-wrap items-center gap-x-2 gap-y-3 p-4 bg-[#0f172a]/60 rounded-2xl border border-slate-800 text-base font-medium">
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <div style={{ lineHeight: 1.6, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px", padding: "16px", background: "#f8faf7", border: "1px solid #dfe5df", borderRadius: "16px", fontSize: "16px", fontWeight: 600, color: "#14251d" }}>
                 {blankWords.map((item, idx) => {
                   const isHidden = !item.isHinted;
 
                   if (!isHidden) {
                     return (
-                      <span key={idx} className="text-slate-200">
+                      <span key={idx} style={{ color: "#14251d" }}>
                         {item.word}
                       </span>
                     );
@@ -952,65 +934,57 @@ export default function StudentListeningExercisePage() {
                       placeholder="..."
                       onChange={(e) => handleBlankWordChange(idx, e.target.value)}
                       disabled={item.isCorrect || isAnswerRevealed}
-                      className={`px-2 py-1 bg-[#1e293b] border rounded-lg text-sm text-center font-bold tracking-wide focus:outline-none focus:ring-1 transition-all w-20 ${item.isCorrect
-                          ? "border-emerald-500/50 text-emerald-400"
-                          : isAnswerRevealed
-                            ? "border-rose-500/30 bg-[#1e293b]/20 text-rose-300 cursor-not-allowed opacity-50"
-                            : (showErrorHighlight && isHintsUnlocked && item.value.trim() !== "" && !item.isCorrect)
-                              ? "border-rose-500/50 text-rose-400"
-                              : "border-slate-700 focus:border-indigo-500 focus:ring-indigo-500 text-slate-300"
-                        }`}
+                      className="form-input"
+                      style={{ width: "84px", textAlign: "center", fontWeight: 800, padding: "6px 8px" }}
                     />
                   );
                 })}
               </div>
 
               {!(isBlankCorrect || isAnswerRevealed) && (
-                <div className="flex items-center justify-end gap-3 mt-1">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", marginTop: "8px" }}>
                   {/* Single Hint button when threshold reached */}
                   {isHintsUnlocked && (
-                    <div className="relative" ref={hintMenuRef}>
+                    <div style={{ position: "relative" }} ref={hintMenuRef}>
                       <button
                         type="button"
                         onClick={() => setIsHintMenuOpen((prev) => !prev)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 border active:scale-95 ${isHintMenuOpen
-                            ? "bg-amber-500 border-amber-400 text-slate-950 font-black shadow-amber-500/20"
-                            : "bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/40 text-amber-300"
-                          }`}
+                        className="button button-small button-outline"
+                        style={{ display: "flex", alignItems: "center", gap: "6px" }}
                       >
-                        <span className="text-sm">💡</span>
+                        <span>💡</span>
                         <span>{isHintMenuOpen ? "Close Hint" : "Hint"}</span>
                       </button>
 
                       {/* Floating Hint Popover */}
                       {isHintMenuOpen && (
-                        <div className="absolute right-0 bottom-full mb-3 w-80 md:w-96 bg-[#1e293b] border border-amber-500/40 rounded-2xl p-4 shadow-2xl z-50 animate-fade-in backdrop-blur-xl">
-                          <div className="flex items-center justify-between border-b border-slate-700/60 pb-2 mb-3">
-                            <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5 uppercase tracking-wide">
+                        <div style={{ position: "absolute", right: 0, bottom: "100%", marginBottom: "12px", width: "360px", background: "white", border: "1px solid #dce5dc", borderRadius: "16px", padding: "16px", boxShadow: "0 12px 36px rgba(0,0,0,0.12)", zIndex: 50 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #edf0ed", paddingBottom: "8px", marginBottom: "12px" }}>
+                            <span style={{ fontSize: "12px", fontWeight: 800, color: "#173f2d", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: "6px" }}>
                               💡 Available Hints
                             </span>
                             <button
                               type="button"
                               onClick={() => setIsHintMenuOpen(false)}
-                              className="text-slate-400 hover:text-slate-200 text-xs font-bold px-1"
+                              style={{ background: "transparent", border: 0, color: "#718078", fontWeight: 800, cursor: "pointer" }}
                             >
                               ✕
                             </button>
                           </div>
 
                           {/* Hint Display Content */}
-                          <div className="flex flex-col gap-2.5 max-h-60 overflow-y-auto">
+                          <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxHeight: "240px", overflowY: "auto" }}>
                             {(!topic || !topic.activeHints || topic.activeHints.includes("vietnamese")) && activeSentence?.vietnameseTranslation && (
-                              <div className="p-3 bg-[#0f172a] border border-amber-500/20 rounded-xl">
-                                <span className="block text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">Gợi ý tiếng Việt</span>
-                                <p className="text-xs text-slate-200 italic">"{activeSentence.vietnameseTranslation}"</p>
+                              <div style={{ padding: "12px", background: "#f8faf7", border: "1px solid #dfe5df", borderRadius: "12px" }}>
+                                <span style={{ display: "block", fontSize: "10px", fontWeight: 800, color: "var(--green)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Gợi ý tiếng Việt</span>
+                                <p style={{ margin: 0, fontSize: "13px", color: "#173f2d", fontStyle: "italic" }}>"{activeSentence.vietnameseTranslation}"</p>
                               </div>
                             )}
 
                             {(!topic || !topic.activeHints || topic.activeHints.includes("first_letter")) && (
-                              <div className="p-3 bg-[#0f172a] border border-amber-500/20 rounded-xl">
-                                <span className="block text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">Gợi ý chữ cái đầu</span>
-                                <div className="flex flex-wrap text-xs font-mono">{renderFirstLetterHint()}</div>
+                              <div style={{ padding: "12px", background: "#f8faf7", border: "1px solid #dfe5df", borderRadius: "12px" }}>
+                                <span style={{ display: "block", fontSize: "10px", fontWeight: 800, color: "var(--green)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Gợi ý chữ cái đầu</span>
+                                <div style={{ display: "flex", flexWrap: "wrap", fontSize: "13px", fontFamily: "monospace", color: "#173f2d" }}>{renderFirstLetterHint()}</div>
                               </div>
                             )}
                           </div>
@@ -1022,9 +996,8 @@ export default function StudentListeningExercisePage() {
                   <button
                     type="button"
                     onClick={checkBlankAnswer}
-                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-all shadow-md active:scale-95 flex items-center gap-1.5"
+                    className="button button-small"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                     Check Answer ({errorCount}/{topic?.maxPlays || 5})
                   </button>
                 </div>
@@ -1034,37 +1007,38 @@ export default function StudentListeningExercisePage() {
 
           {/* Correct feedback overlay */}
           {(isFullCorrect || isBlankCorrect) && (
-            <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-2xl flex items-center justify-between text-sm animate-fade-in shadow-lg">
-              <div className="flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <span>Perfect transcription!</span>
+            <div style={{ marginTop: "16px", padding: "16px", background: "#eaf3ec", border: "1px solid #b2d8be", color: "#1c5035", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "14px", fontWeight: 700 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span>✨ Perfect transcription!</span>
               </div>
               <button
+                type="button"
                 onClick={handleNext}
-                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-all active:scale-[0.97]"
+                className="button button-small"
               >
-                {currentIndex < sentences.length - 1 ? "Next sentence" : "Finish Exercise"}
+                {currentIndex < sentences.length - 1 ? "Next sentence →" : "Finish Exercise 🎉"}
               </button>
             </div>
           )}
 
           {/* Skip option when check-submit limit is hit (answer revealed) */}
           {!(isFullCorrect || isBlankCorrect) && isAnswerRevealed && (
-            <div className="mt-4 p-5 bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-2xl flex flex-col gap-3 shadow-lg animate-fade-in">
-              <div className="flex items-center gap-2 text-rose-400 font-bold text-sm">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                <span>Max attempts reached ({errorCount}/{topic?.maxPlays || 5} checks)</span>
+            <div style={{ marginTop: "16px", padding: "20px", background: "#fef2f2", border: "1px solid #fca5a5", color: "#991b1b", borderRadius: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={{ fontWeight: 800, fontSize: "14px", display: "flex", alignItems: "center", gap: "8px" }}>
+                <span>🔒 Max attempts reached ({errorCount}/{topic?.maxPlays || 5} checks)</span>
               </div>
-              <p className="text-slate-300 text-sm">You have used all your attempts. Here is the correct answer:</p>
-              <div className="p-3 bg-[#0f172a] border border-[#334155] rounded-xl font-mono text-slate-100 text-base font-semibold text-center select-all">
+              <p style={{ margin: 0, fontSize: "13px", color: "#7f1d1d" }}>You have used all your attempts. Here is the correct answer:</p>
+              <div style={{ padding: "12px", background: "white", border: "1px solid #fca5a5", borderRadius: "12px", fontFamily: "monospace", fontSize: "16px", fontWeight: 800, color: "#991b1b", textAlign: "center" }}>
                 {activeSentence.text}
               </div>
-              <div className="flex justify-end mt-2">
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
                 <button
+                  type="button"
                   onClick={handleNext}
-                  className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl transition-all active:scale-[0.97]"
+                  className="button button-small"
+                  style={{ background: "#dc2626", color: "white" }}
                 >
-                  {currentIndex < sentences.length - 1 ? "Next sentence" : "Finish Exercise"}
+                  {currentIndex < sentences.length - 1 ? "Next sentence →" : "Finish Exercise"}
                 </button>
               </div>
             </div>
