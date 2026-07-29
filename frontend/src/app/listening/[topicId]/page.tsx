@@ -663,47 +663,56 @@ export default function StudentListeningExercisePage() {
         </div>
       )}
 
-      {/* Navbar */}
-      <nav className="border-b border-[#334155]/60 bg-[#1e293b]/40 backdrop-blur-md sticky top-0 z-10 px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/listening" className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-          </Link>
-          <span className="font-bold text-sm tracking-wide text-slate-300 hidden md:inline">
-            Exercise: {topic.title}
-          </span>
-        </div>
+      {/* English Quest Navbar */}
+      <header className="site-header">
+        <div className="site-nav" style={{ justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <Link className="brand" href="/dashboard">
+              <span className="brand-mark">EQ</span>
+              <span>English Quest</span>
+            </Link>
+            <Link href="/listening" className="button button-small button-outline" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              ← Back to Exercises
+            </Link>
+          </div>
 
-        <div className="flex items-center gap-2">
-          {/* Study Mode Selector */}
-          {!topic || topic.studyMode === "both" ? (
-            <div className="flex bg-[#0f172a] rounded-lg p-0.5 border border-[#334155]">
-              <button
-                onClick={() => setStudyMode("full")}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${studyMode === "full"
-                    ? "bg-indigo-600 text-white shadow"
-                    : "text-slate-400 hover:text-slate-200"
-                  }`}
-              >
-                Full Type Sense
-              </button>
-              <button
-                onClick={() => setStudyMode("blank")}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${studyMode === "blank"
-                    ? "bg-indigo-600 text-white shadow"
-                    : "text-slate-400 hover:text-slate-200"
-                  }`}
-              >
-                Fill in Blank
-              </button>
-            </div>
-          ) : (
-            <span className="text-xs font-bold text-slate-400 px-3 py-1.5 bg-[#0f172a] border border-[#334155] rounded-lg uppercase">
-              {studyMode === "full" ? "Full Type Sense" : "Fill in Blank"}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--muted)", display: "none" }} className="md:inline">
+              Exercise: {topic.title}
             </span>
-          )}
+
+            {/* Study Mode Selector */}
+            {!topic || topic.studyMode === "both" ? (
+              <div style={{ display: "flex", background: "#0f172a", borderRadius: "8px", padding: "2px", border: "1px solid #334155" }}>
+                <button
+                  type="button"
+                  onClick={() => setStudyMode("full")}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${studyMode === "full"
+                      ? "bg-indigo-600 text-white shadow"
+                      : "text-slate-400 hover:text-slate-200"
+                    }`}
+                >
+                  Full Type Sense
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStudyMode("blank")}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${studyMode === "blank"
+                      ? "bg-indigo-600 text-white shadow"
+                      : "text-slate-400 hover:text-slate-200"
+                    }`}
+                >
+                  Fill in Blank
+                </button>
+              </div>
+            ) : (
+              <span style={{ fontSize: "12px", fontWeight: 700, color: "#94a3b8", padding: "6px 12px", background: "#0f172a", border: "1px solid #334155", borderRadius: "8px", textTransform: "uppercase" }}>
+                {studyMode === "full" ? "Full Type Sense" : "Fill in Blank"}
+              </span>
+            )}
+          </div>
         </div>
-      </nav>
+      </header>
 
       {/* Workspace */}
       <div className="max-w-4xl mx-auto px-6 mt-10">

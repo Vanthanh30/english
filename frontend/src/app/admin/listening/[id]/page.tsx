@@ -262,38 +262,52 @@ export default function AdminListeningEditPage() {
   }
 
   return (
-    <main className="admin-app min-h-screen flex bg-[#0f172a] text-[#f8fafc] font-sans">
-      {/* Sidebar */}
-      <aside className="w-64 bg-[#1e293b] border-r border-[#334155] flex flex-col p-6 shrink-0">
-        <Link className="flex items-center gap-3 mb-8" href="/dashboard">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-violet-500/20">
-            EQ
-          </div>
+    <main className="admin-app">
+      {/* Admin Sidebar */}
+      <aside className="admin-sidebar">
+        <Link className="admin-logo" href="/dashboard">
+          <span>EQ</span>
           <div>
-            <strong className="block text-slate-100 text-sm font-semibold tracking-wide">ENGLISH QUEST</strong>
-            <small className="block text-violet-400 text-xs font-medium">Admin Workspace</small>
+            <strong>English Quest</strong>
+            <small>Admin workspace</small>
           </div>
         </Link>
 
-        <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-3">Workspace</div>
-        <nav className="flex flex-col gap-2 mb-auto">
-          <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-[#334155]/50 transition-all font-medium text-sm">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" /></svg>
+        <div className="admin-sidebar-label">Workspace</div>
+        <nav className="admin-side-nav" aria-label="Admin navigation">
+          <Link href="/dashboard">
+            <svg fill="none" height="20" viewBox="0 0 24 24" width="20" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
             Dashboard
           </Link>
-          <Link href="/admin/content" className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-[#334155]/50 transition-all font-medium text-sm">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+          <Link href="/admin/content">
+            <svg fill="none" height="20" viewBox="0 0 24 24" width="20" stroke="currentColor" strokeWidth="1.8"><path d="M4 19V5M9 19V5M14 19V5"/><path d="m18 5 2 14"/></svg>
             Content library
           </Link>
-          <Link href="/admin/listening" className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-[#334155]/50 transition-all font-medium text-sm">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+          <Link href="/admin/listening" className="active">
+            <svg fill="none" height="20" viewBox="0 0 24 24" width="20" stroke="currentColor" strokeWidth="1.8"><path d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
             Dictation CMS
           </Link>
         </nav>
+
+        <div className="admin-sidebar-card">
+          <span className="admin-sidebar-card-icon">
+            ⚡
+          </span>
+          <strong>Sprint 2 workspace</strong>
+          <p>Edit dictation exercise details and timestamp script.</p>
+        </div>
+
+        <div className="admin-user">
+          <span>{user?.displayName?.slice(0, 1).toUpperCase() || "A"}</span>
+          <div>
+            <strong>{user?.displayName || "Administrator"}</strong>
+            <small>{user?.email}</small>
+          </div>
+        </div>
       </aside>
 
       {/* Main Form Area */}
-      <section className="flex-grow flex flex-col min-w-0 overflow-auto">
+      <section className="admin-main">
         <header className="px-10 py-6 border-b border-[#334155] flex items-center justify-between bg-[#1e293b]/30">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
