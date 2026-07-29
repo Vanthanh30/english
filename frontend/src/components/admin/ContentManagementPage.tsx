@@ -247,6 +247,10 @@ export default function ContentManagementPage() {
             <AdminIcon name="library" />
             Content library
           </span>
+          <Link href="/admin/listening">
+            <AdminIcon name="collection" />
+            Dictation CMS
+          </Link>
         </nav>
 
         <div className="admin-sidebar-card">

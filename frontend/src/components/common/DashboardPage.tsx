@@ -368,11 +368,16 @@ export default function DashboardPage() {
                 Admin Shortcuts
               </h4>
               <p style={{ margin: 0, fontSize: "13px", color: "var(--muted)", lineHeight: 1.5 }}>
-                Access content dashboard to add topics, configure word lists, or edit lesson plans.
+                Access content dashboard to add topics, configure word lists, edit lesson plans, or manage dictation exercises.
               </p>
-              <Link className="button button-small" href="/admin/content" style={{ width: "100%" }}>
-                Manage Content
-              </Link>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <Link className="button button-small" href="/admin/content" style={{ width: "100%", textAlign: "center" }}>
+                  Manage Content Library
+                </Link>
+                <Link className="button button-small button-secondary" href="/admin/listening" style={{ width: "100%", textAlign: "center" }}>
+                  🎧 Manage Dictation CMS
+                </Link>
+              </div>
             </div>
           )}
         </div>
