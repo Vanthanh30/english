@@ -162,19 +162,34 @@ export default function StudentListeningListPage() {
           ) : (
             <div className="tool-spaces-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "20px" }}>
               {topics.map((topic) => {
-                const hasStarted = !!topic.progress;
-                const isCompleted = !!topic.progress?.completed;
+                const totalSentences = topic.sentenceCount || 0;
+                const completedSentences = topic.progress?.completedSentences?.length || 0;
+                const isCompleted = !!topic.progress?.completed || (totalSentences > 0 && completedSentences >= totalSentences);
+                const hasStarted = !!topic.progress && completedSentences > 0;
+                const percent = totalSentences > 0 ? Math.min(100, Math.round((completedSentences / totalSentences) * 100)) : 0;
 
                 return (
                   <div key={topic.id} className="dashboard-card tool-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                     <div>
-                      <div className="tool-card-header" style={{ marginBottom: "12px" }}>
-                        <span className="tool-card-icon">🎧</span>
-                        <span className={`tool-card-badge ${
-                          topic.level === "BEGINNER" ? "info" : topic.level === "INTERMEDIATE" ? "due" : "neutral"
-                        }`}>
-                          {topic.level}
-                        </span>
+                      <div className="tool-card-header" style={{ marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span className="tool-card-icon">🎧</span>
+                          <span className={`tool-card-badge ${
+                            topic.level === "BEGINNER" ? "info" : topic.level === "INTERMEDIATE" ? "due" : "neutral"
+                          }`}>
+                            {topic.level}
+                          </span>
+                        </div>
+
+                        {isCompleted ? (
+                          <span style={{ fontSize: "11px", fontWeight: 800, padding: "3px 8px", borderRadius: "999px", background: "#eaf3ec", color: "#1c5035" }}>
+                            ✓ COMPLETED
+                          </span>
+                        ) : hasStarted ? (
+                          <span style={{ fontSize: "11px", fontWeight: 800, padding: "3px 8px", borderRadius: "999px", background: "#fef3c7", color: "#92400e" }}>
+                            ▶ IN PROGRESS
+                          </span>
+                        ) : null}
                       </div>
                       <h3 style={{ fontSize: "18px", fontWeight: 800, margin: "0 0 8px" }}>{topic.title}</h3>
                       <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.5, margin: "0 0 16px" }}>
@@ -182,13 +197,28 @@ export default function StudentListeningListPage() {
                       </p>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "12px", borderTop: "1px solid #edf0ed" }}>
-                      <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 600 }}>
-                        {topic.sentenceCount || 0} sentences
-                      </span>
-                      <Link href={`/listening/${topic.slug}`} className="button button-small" style={{ marginLeft: "auto" }}>
-                        {isCompleted ? "Practice Again" : hasStarted ? "Resume" : "Start exercise →"}
-                      </Link>
+                    <div>
+                      {/* Progress Bar for Started / In Progress topics */}
+                      {hasStarted && !isCompleted && (
+                        <div style={{ marginBottom: "12px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", fontWeight: 700, color: "var(--muted)", marginBottom: "4px" }}>
+                            <span>{completedSentences} / {totalSentences} sentences</span>
+                            <span style={{ color: "var(--green)" }}>{percent}%</span>
+                          </div>
+                          <div style={{ width: "100%", height: "6px", background: "#edf1ed", borderRadius: "999px", overflow: "hidden" }}>
+                            <div style={{ width: `${percent}%`, height: "100%", background: "#2f6d4f", borderRadius: "999px" }}></div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "12px", borderTop: "1px solid #edf0ed" }}>
+                        <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 600 }}>
+                          {totalSentences} sentences
+                        </span>
+                        <Link href={`/listening/${topic.slug}`} className="button button-small" style={{ marginLeft: "auto" }}>
+                          {isCompleted ? "Practice Again" : hasStarted ? `Resume (${percent}%)` : "Start exercise →"}
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 );

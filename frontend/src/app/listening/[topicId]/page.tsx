@@ -92,9 +92,19 @@ export default function StudentListeningExercisePage() {
 
         // Restore progress if available
         if (res.progress) {
-          setCompletedSentences(res.progress.completedSentences || []);
+          const completed = res.progress.completedSentences || [];
+          setCompletedSentences(completed);
           setTotalErrors(res.progress.errorCount || 0);
           setTotalListened(res.progress.listenedCount || 0);
+
+          if (res.sentences && res.sentences.length > 0) {
+            const uncompletedIdx = res.sentences.findIndex((s) => !completed.includes(s.id));
+            if (uncompletedIdx !== -1) {
+              setCurrentIndex(uncompletedIdx);
+            } else if (completed.length >= res.sentences.length) {
+              setIsFinished(true);
+            }
+          }
         }
 
         // Apply topic settings
@@ -529,6 +539,9 @@ export default function StudentListeningExercisePage() {
 
   // Navigate: Next sentence
   const handleNext = () => {
+    if (activeSentence) {
+      markSentenceComplete();
+    }
     if (currentIndex < sentences.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
