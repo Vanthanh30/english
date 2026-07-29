@@ -558,18 +558,34 @@ export default function StudentListeningExercisePage() {
   const renderFirstLetterHint = () => {
     if (!activeSentence) return null;
     const words = activeSentence.text.split(/\s+/);
-    return words.map((w, i) => {
-      const clean = w.replace(/[^a-zA-Z0-9]/g, "");
-      const punctuation = w.replace(/[a-zA-Z0-9]/g, "");
-      if (clean.length === 0) return w;
-      return (
-        <span key={i} className="inline-block mr-2 font-mono text-slate-400">
-          <span className="text-violet-400 font-bold">{clean[0]}</span>
-          {"_".repeat(clean.length - 1)}
-          <span className="text-slate-500">{punctuation}</span>
-        </span>
-      );
-    });
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
+        {words.map((w, i) => {
+          const clean = w.replace(/[^a-zA-Z0-9]/g, "");
+          const punctuation = w.replace(/[a-zA-Z0-9]/g, "");
+          if (clean.length === 0) return <span key={i}>{w}</span>;
+          return (
+            <span
+              key={i}
+              style={{
+                background: "#f0f5f1",
+                border: "1px solid #dce5dc",
+                padding: "3px 8px",
+                borderRadius: "8px",
+                fontFamily: "monospace",
+                fontSize: "13px",
+                fontWeight: 700,
+                color: "#173f2d",
+              }}
+            >
+              <strong style={{ color: "#2f6d4f", fontSize: "14px" }}>{clean[0]}</strong>
+              {"_".repeat(clean.length - 1)}
+              {punctuation}
+            </span>
+          );
+        })}
+      </div>
+    );
   };
 
   if (loading) {
@@ -912,20 +928,37 @@ export default function StudentListeningExercisePage() {
             </div>
           ) : (
             /* Fill in the Blank mode */
-            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-              <div style={{ lineHeight: 1.6, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px", padding: "16px", background: "#f8faf7", border: "1px solid #dfe5df", borderRadius: "16px", fontSize: "16px", fontWeight: 600, color: "#14251d" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+              <div
+                style={{
+                  lineHeight: "2.4",
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "24px",
+                  background: "#f8faf7",
+                  border: "1px solid #dfe5df",
+                  borderRadius: "20px",
+                  fontSize: "17px",
+                  fontWeight: 600,
+                  color: "#14251d"
+                }}
+              >
                 {blankWords.map((item, idx) => {
                   const isHidden = !item.isHinted;
 
                   if (!isHidden) {
                     return (
-                      <span key={idx} style={{ color: "#14251d" }}>
+                      <span key={idx} style={{ color: "#14251d", fontSize: "17px", fontWeight: 600 }}>
                         {item.word}
                       </span>
                     );
                   }
 
-                  // Render input field for missing word
+                  const isIncorrect = showErrorHighlight && isHintsUnlocked && item.value.trim() !== "" && !item.isCorrect;
+                  const inputWidth = Math.max(72, Math.min(180, item.word.length * 13 + 30));
+
                   return (
                     <input
                       key={idx}
@@ -933,9 +966,43 @@ export default function StudentListeningExercisePage() {
                       value={item.value}
                       placeholder="..."
                       onChange={(e) => handleBlankWordChange(idx, e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          checkBlankAnswer();
+                        }
+                      }}
                       disabled={item.isCorrect || isAnswerRevealed}
-                      className="form-input"
-                      style={{ width: "84px", textAlign: "center", fontWeight: 800, padding: "6px 8px" }}
+                      style={{
+                        width: `${inputWidth}px`,
+                        textAlign: "center",
+                        fontWeight: 800,
+                        fontSize: "16px",
+                        padding: "6px 10px",
+                        borderRadius: "10px",
+                        outline: "none",
+                        transition: "all 0.2s",
+                        background: item.isCorrect
+                          ? "#eaf3ec"
+                          : isAnswerRevealed
+                            ? "#f1f5f9"
+                            : isIncorrect
+                              ? "#fef2f2"
+                              : "#fffdf7",
+                        border: item.isCorrect
+                          ? "2px solid #16a34a"
+                          : isAnswerRevealed
+                            ? "1px solid #cbd5e1"
+                            : isIncorrect
+                              ? "2px solid #dc2626"
+                              : "2px solid #2f6d4f",
+                        color: item.isCorrect
+                          ? "#1c5035"
+                          : isIncorrect
+                            ? "#991b1b"
+                            : "#14251d",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.03)"
+                      }}
                     />
                   );
                 })}
