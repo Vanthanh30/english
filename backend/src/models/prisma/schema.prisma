@@ -54,6 +54,7 @@ model User {
   readingNotes           ReadingNote[]
   chatSessions           ChatSession[]
   imageWritingSessions   ImageWritingSession[]
+  listeningProgress      ListeningProgress[]
 
   @@index([status])
 }
@@ -378,5 +379,54 @@ model ImageWritingSession {
 }
 
 
+model ListeningTopic {
+  id            String            @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  slug          String            @unique
+  description   String?
+  audioUrl      String?           // Uploaded audio URL (from Cloudinary)
+  audioPublicId String?           // Cloudinary public ID for clean up
+  youtubeUrl    String?           // YouTube link if selected
+  transcript    String
+  level         ContentLevel      @default(BEGINNER)
+  status        LessonStatus      @default(DRAFT)
+  studyMode     String            @default("both") // "both" | "full" | "blank"
+  activeHints   String[]          // e.g. ["vietnamese", "first_letter", "error_highlight"]
+  maxPlays      Int               @default(5)
+  errorLimit    Int               @default(3)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  sentences     ListeningSentence[]
+  progress      ListeningProgress[]
 
+  @@index([level])
+}
 
+model ListeningSentence {
+  id                    String         @id @default(auto()) @map("_id") @db.ObjectId
+  topicId               String         @db.ObjectId
+  text                  String         // English sentence text
+  vietnameseTranslation String?        // Translation hint in Vietnamese
+  startTime             Float?         // For audio playback markers
+  endTime               Float?
+  order                 Int
+  topic                 ListeningTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId, order])
+}
+
+model ListeningProgress {
+  id                 String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String         @db.ObjectId
+  topicId            String         @db.ObjectId
+  completed          Boolean        @default(false)
+  listenedCount      Int            @default(0)
+  errorCount         Int            @default(0)
+  completedSentences String[]       // Slices/ids/indexes of completed sentences
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic              ListeningTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topicId])
+}

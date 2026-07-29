@@ -31,4 +31,18 @@ export class AdminUploadController {
   ) {
     return this.images.upload(file.buffer);
   }
+
+  @Post('audio')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 25_000_000 } }))
+  uploadAudio(
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: /^audio\/(mpeg|mp3|wav|webm|ogg|m4a|x-m4a)$/ })
+        .addMaxSizeValidator({ maxSize: 25_000_000 })
+        .build({ fileIsRequired: true }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.images.uploadAudio(file.buffer);
+  }
 }

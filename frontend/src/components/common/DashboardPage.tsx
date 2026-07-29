@@ -280,6 +280,22 @@ export default function DashboardPage() {
               </span>
             </Link>
 
+            <Link href="/listening" className="dashboard-card tool-card">
+              <div className="tool-card-header">
+                <span className="tool-card-icon">🎧</span>
+                <span className="tool-card-badge info">Dictation</span>
+              </div>
+              <div>
+                <h3>Dictation Practice</h3>
+                <p>
+                  Listen to sentences and type them out. Practice Full Type Sense or Fill-in-the-Blank to improve listening.
+                </p>
+              </div>
+              <span className="tool-card-footer">
+                Start dictation &rarr;
+              </span>
+            </Link>
+
             <Link href="/notes" className="dashboard-card tool-card">
               <div className="tool-card-header">
                 <span className="tool-card-icon">📝</span>

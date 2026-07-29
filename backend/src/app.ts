@@ -13,6 +13,7 @@ import { GameModule } from './routes/game.routes';
 import { ReadingModule } from './routes/reading.routes';
 import { ChatbotModule } from './routes/chatbot.routes';
 import { ImageWritingModule } from './routes/image-writing.routes';
+import { ListeningModule } from './routes/listening.routes';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { ImageWritingModule } from './routes/image-writing.routes';
     ReadingModule,
     ChatbotModule,
     ImageWritingModule,
+    ListeningModule,
   ],
   controllers: [AppController],
   providers: [AppService],

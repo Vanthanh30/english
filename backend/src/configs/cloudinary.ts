@@ -53,6 +53,35 @@ export class CloudinaryImageService {
     });
   }
 
+  uploadAudio(buffer: Buffer): Promise<{ url: string; publicId: string }> {
+    return new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'english-quest/listening',
+          resource_type: 'video', // Cloudinary uploads audio under resource_type 'video'
+          unique_filename: true,
+          overwrite: false,
+        },
+        (error, result) => {
+          if (error || !result) {
+            reject(
+              error instanceof Error
+                ? error
+                : new Error('Cloudinary audio upload failed'),
+            );
+            return;
+          }
+          resolve({
+            url: result.secure_url,
+            publicId: result.public_id,
+          });
+        },
+      );
+
+      Readable.from(buffer).pipe(stream);
+    });
+  }
+
   async delete(publicId: string): Promise<any> {
     return new Promise((resolve, reject) => {
       cloudinary.uploader.destroy(publicId, (error, result) => {
