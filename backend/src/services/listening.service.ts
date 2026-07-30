@@ -240,10 +240,13 @@ export class ListeningService {
 
   // User/Admin: Get Topic Details with Sentences & Progress
   async getTopic(idOrSlug: string, userId?: string) {
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(idOrSlug);
+    const where: any = isObjectId
+      ? { OR: [{ id: idOrSlug }, { slug: idOrSlug }] }
+      : { slug: idOrSlug };
+
     const topic = await this.prisma.listeningTopic.findFirst({
-      where: {
-        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
-      },
+      where,
       include: {
         sentences: {
           orderBy: { order: 'asc' },
@@ -321,9 +324,14 @@ export class ListeningService {
   }
 
   // Admin: Get Topic Details for Edit
-  async getAdminTopic(id: string) {
-    const topic = await this.prisma.listeningTopic.findUnique({
-      where: { id },
+  async getAdminTopic(idOrSlug: string) {
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(idOrSlug);
+    const where: any = isObjectId
+      ? { OR: [{ id: idOrSlug }, { slug: idOrSlug }] }
+      : { slug: idOrSlug };
+
+    const topic = await this.prisma.listeningTopic.findFirst({
+      where,
       include: {
         sentences: {
           orderBy: { order: 'asc' },
@@ -332,7 +340,7 @@ export class ListeningService {
     });
 
     if (!topic) {
-      throw new NotFoundException(`Listening topic with ID ${id} not found`);
+      throw new NotFoundException(`Listening topic with ID or slug "${idOrSlug}" not found`);
     }
 
     return topic;

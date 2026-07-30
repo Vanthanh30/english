@@ -385,6 +385,25 @@ export function ChatbotPopup() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+
+  // Click outside popup container to hide chatbox
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        isOpen &&
+        !isOpenWorkspace &&
+        popupRef.current &&
+        !popupRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen, isOpenWorkspace]);
 
   const starterPrompts = [
     {
@@ -973,7 +992,7 @@ Please grade my answers, provide a score, and explain any corrections.`;
   if (!sessionReady || !user) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div ref={popupRef} className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
       
       {/* Interactive Exercise Workspace Modal */}
       {isOpenWorkspace && (
@@ -1193,7 +1212,7 @@ Please grade my answers, provide a score, and explain any corrections.`;
 
       {/* Floating Panel (Open state) */}
       {isOpen && (
-        <div className="w-[380px] h-[560px] bg-[#fffdf7] border border-[#14251d]/15 shadow-2xl rounded-3xl flex flex-col mb-4 overflow-hidden transform scale-100 origin-bottom-right transition-all duration-300">
+        <div className="w-[360px] sm:w-[380px] h-[500px] max-h-[calc(100vh-120px)] bg-[#fffdf7] border border-[#14251d]/15 shadow-2xl rounded-3xl flex flex-col mb-4 overflow-hidden transform scale-100 origin-bottom-right transition-all duration-300">
           
           {/* Header */}
           <div className="bg-[#2f6d4f] text-white p-4 flex items-center justify-between shadow-sm select-none relative">

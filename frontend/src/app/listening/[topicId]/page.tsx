@@ -763,33 +763,38 @@ export default function StudentListeningExercisePage() {
         {/* Audio controller card */}
         <div className="dashboard-card" style={{ padding: "28px", marginBottom: "28px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
 
-          {/* Speed & Loop settings */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: "20px" }}>
-            {/* Speed selectors */}
-            <div style={{ display: "flex", background: "#edf1ed", borderRadius: "10px", padding: "3px", fontSize: "12px", fontWeight: 700 }}>
-              {([0.5, 0.75, 1.0, 1.25] as number[]).map((spd) => (
-                <button
-                  key={spd}
-                  onClick={() => !(isAudioLocked || listenedCount >= (topic?.maxPlays || 5)) && handleSpeedChange(spd)}
-                  disabled={isAudioLocked || listenedCount >= (topic?.maxPlays || 5)}
-                  className={`button button-small ${playbackSpeed === spd ? "" : "button-secondary"}`}
-                  style={{ padding: "4px 10px", fontSize: "11px" }}
-                >
-                  {spd}x
-                </button>
-              ))}
+          {/* Speed settings (LOOP SEGMENT removed) */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", marginBottom: "20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#f0f4f1", border: "1px solid #dce5dc", borderRadius: "12px", padding: "4px 6px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 800, color: "#2f6d4f", textTransform: "uppercase", letterSpacing: "0.06em", paddingLeft: "6px", paddingRight: "2px" }}>
+                Speed:
+              </span>
+              {([0.5, 0.75, 1.0, 1.25] as number[]).map((spd) => {
+                const isActive = playbackSpeed === spd;
+                return (
+                  <button
+                    key={spd}
+                    type="button"
+                    onClick={() => !(isAudioLocked || listenedCount >= (topic?.maxPlays || 5)) && handleSpeedChange(spd)}
+                    disabled={isAudioLocked || listenedCount >= (topic?.maxPlays || 5)}
+                    style={{
+                      padding: "5px 12px",
+                      fontSize: "12px",
+                      fontWeight: isActive ? 800 : 600,
+                      borderRadius: "8px",
+                      border: isActive ? "1px solid #173f2d" : "1px solid transparent",
+                      background: isActive ? "#173f2d" : "transparent",
+                      color: isActive ? "#ffffff" : "#4a6354",
+                      cursor: isAudioLocked || listenedCount >= (topic?.maxPlays || 5) ? "not-allowed" : "pointer",
+                      boxShadow: isActive ? "0 2px 6px rgba(23, 63, 45, 0.25)" : "none",
+                      transition: "all 0.15s ease-in-out",
+                    }}
+                  >
+                    {spd === 1.0 ? "1x (Normal)" : `${spd}x`}
+                  </button>
+                );
+              })}
             </div>
-
-            {/* Loop Toggle */}
-            <button
-              type="button"
-              onClick={() => !(isAudioLocked || listenedCount >= (topic?.maxPlays || 5)) && setIsLooping(!isLooping)}
-              disabled={isAudioLocked || listenedCount >= (topic?.maxPlays || 5)}
-              className={`button button-small ${isLooping ? "" : "button-outline"}`}
-              style={{ fontSize: "11px" }}
-            >
-              🔄 LOOP SEGMENT
-            </button>
           </div>
 
           {/* Play/Pause Button */}
@@ -810,13 +815,28 @@ export default function StudentListeningExercisePage() {
             </button>
 
             <button
+              type="button"
               onClick={handleReplaySegment}
               disabled={isAudioLocked || listenedCount >= (topic?.maxPlays || 5)}
-              className="button button-outline"
-              style={{ width: "48px", height: "48px", borderRadius: "14px", display: "grid", placeItems: "center", padding: 0 }}
+              style={{
+                width: "52px",
+                height: "52px",
+                borderRadius: "50%",
+                background: isAudioLocked || listenedCount >= (topic?.maxPlays || 5) ? "#f1f5f9" : "#f0f5f1",
+                border: isAudioLocked || listenedCount >= (topic?.maxPlays || 5) ? "1.5px solid #e2e8f0" : "1.5px solid #c8dbc9",
+                color: isAudioLocked || listenedCount >= (topic?.maxPlays || 5) ? "#94a3b8" : "#173f2d",
+                display: "grid",
+                placeItems: "center",
+                cursor: isAudioLocked || listenedCount >= (topic?.maxPlays || 5) ? "not-allowed" : "pointer",
+                boxShadow: "0 4px 12px rgba(23, 63, 45, 0.08)",
+                transition: "all 0.15s ease-in-out",
+              }}
               title={isAudioLocked || listenedCount >= (topic?.maxPlays || 5) ? "Audio Locked" : "Replay Sentence segment"}
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89" /></svg>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
             </button>
           </div>
 
