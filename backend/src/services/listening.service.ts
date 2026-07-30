@@ -2,7 +2,9 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PrismaService } from '../configs/db';
+import { CloudinaryImageService } from '../configs/cloudinary';
 import { ContentLevel } from '@prisma/client';
+import youtubedl from 'youtube-dl-exec';
 import * as ytdl from '@distube/ytdl-core';
 import {
   CreateListeningTopicDto,
@@ -29,6 +31,7 @@ export class ListeningService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly cloudinaryService: CloudinaryImageService,
   ) {
     const apiKey = this.configService.getOrThrow<string>('GEMINI_API_KEY');
     this.genAI = new GoogleGenerativeAI(apiKey);
@@ -48,6 +51,8 @@ export class ListeningService {
 
     let transcript = dto.transcript || '';
     let sentences = dto.sentences || [];
+    let audioUrl = dto.audioUrl || null;
+    let audioPublicId = dto.audioPublicId || null;
 
     if ((sentences.length === 0 || !transcript) && (dto.audioUrl || dto.youtubeUrl)) {
       try {
@@ -57,6 +62,12 @@ export class ListeningService {
         });
         transcript = aiData.transcript;
         sentences = aiData.sentences;
+        if (aiData.audioUrl && !audioUrl) {
+          audioUrl = aiData.audioUrl;
+        }
+        if (aiData.audioPublicId && !audioPublicId) {
+          audioPublicId = aiData.audioPublicId;
+        }
       } catch (error) {
         console.error('Failed to auto-transcribe in createTopic:', error);
         transcript = transcript || 'Transcription failed.';
@@ -69,8 +80,8 @@ export class ListeningService {
           title: dto.title,
           slug,
           description: dto.description,
-          audioUrl: dto.audioUrl,
-          audioPublicId: dto.audioPublicId,
+          audioUrl,
+          audioPublicId,
           youtubeUrl: dto.youtubeUrl,
           transcript,
           level: dto.level,
@@ -121,6 +132,9 @@ export class ListeningService {
     const sourceChanged = (dto.audioUrl !== undefined && dto.audioUrl !== topic.audioUrl) || 
                           (dto.youtubeUrl !== undefined && dto.youtubeUrl !== topic.youtubeUrl);
 
+    let updatedAudioUrl = dto.audioUrl !== undefined ? dto.audioUrl : topic.audioUrl;
+    let updatedAudioPublicId = dto.audioPublicId !== undefined ? dto.audioPublicId : topic.audioPublicId;
+
     if (sourceChanged && (!sentences || sentences.length === 0)) {
       try {
         const aiData = await this.autoTranscribe({
@@ -129,6 +143,12 @@ export class ListeningService {
         });
         transcript = aiData.transcript;
         sentences = aiData.sentences;
+        if (aiData.audioUrl) {
+          updatedAudioUrl = aiData.audioUrl;
+        }
+        if (aiData.audioPublicId) {
+          updatedAudioPublicId = aiData.audioPublicId;
+        }
       } catch (error) {
         console.error('Failed to auto-transcribe in updateTopic:', error);
       }
@@ -147,8 +167,8 @@ export class ListeningService {
       }
     }
     if (dto.description !== undefined) data.description = dto.description;
-    if (dto.audioUrl !== undefined) data.audioUrl = dto.audioUrl;
-    if (dto.audioPublicId !== undefined) data.audioPublicId = dto.audioPublicId;
+    if (updatedAudioUrl !== undefined) data.audioUrl = updatedAudioUrl;
+    if (updatedAudioPublicId !== undefined) data.audioPublicId = updatedAudioPublicId;
     if (dto.youtubeUrl !== undefined) data.youtubeUrl = dto.youtubeUrl;
     if (transcript !== undefined) data.transcript = transcript;
     if (dto.level !== undefined) data.level = dto.level;
@@ -164,21 +184,21 @@ export class ListeningService {
         data,
       });
 
+      // Update sentences if provided
       if (sentences !== undefined) {
-        // Drop and recreate sentences to maintain order
         await tx.listeningSentence.deleteMany({
           where: { topicId: id },
         });
 
         if (sentences.length > 0) {
           await tx.listeningSentence.createMany({
-            data: sentences.map((s) => ({
+            data: sentences.map((s, index) => ({
               topicId: id,
               text: s.text,
               vietnameseTranslation: s.vietnameseTranslation,
               startTime: s.startTime,
               endTime: s.endTime,
-              order: s.order,
+              order: s.order || index + 1,
             })),
           });
         }
@@ -203,19 +223,18 @@ export class ListeningService {
     if (!topic) {
       throw new NotFoundException(`Listening topic with ID ${id} not found`);
     }
-    await this.prisma.listeningTopic.delete({
+
+    return this.prisma.listeningTopic.delete({
       where: { id },
     });
-    return { success: true };
   }
 
-  // User/Admin: Read Single
+  // User/Admin: Get Topic Details with Sentences & Progress
   async getTopic(idOrSlug: string, userId?: string) {
-    const isObjectId = /^[0-9a-fA-F]{24}$/.test(idOrSlug);
-    const query = isObjectId ? { id: idOrSlug } : { slug: idOrSlug };
-
     const topic = await this.prisma.listeningTopic.findFirst({
-      where: query,
+      where: {
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      },
       include: {
         sentences: {
           orderBy: { order: 'asc' },
@@ -260,57 +279,76 @@ export class ListeningService {
 
     const topics = await this.prisma.listeningTopic.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
       include: {
-        sentences: {
-          select: { id: true },
+        _count: {
+          select: { sentences: true },
         },
+        progress: filters.userId
+          ? {
+              where: { userId: filters.userId },
+            }
+          : false,
       },
+      orderBy: { createdAt: 'desc' },
     });
-
-    if (filters.userId) {
-      const progresses = await this.prisma.listeningProgress.findMany({
-        where: { userId: filters.userId },
-      });
-
-      const progressMap = new Map(progresses.map((p) => [p.topicId, p]));
-      return topics.map((t) => ({
-        id: t.id,
-        title: t.title,
-        slug: t.slug,
-        description: t.description,
-        level: t.level,
-        audioUrl: t.audioUrl,
-        youtubeUrl: t.youtubeUrl,
-        sentenceCount: t.sentences.length,
-        progress: progressMap.get(t.id) || null,
-        createdAt: t.createdAt,
-      }));
-    }
 
     return topics.map((t) => ({
       id: t.id,
       title: t.title,
       slug: t.slug,
       description: t.description,
-      level: t.level,
       audioUrl: t.audioUrl,
       youtubeUrl: t.youtubeUrl,
-      sentenceCount: t.sentences.length,
-      progress: null,
+      level: t.level,
+      status: t.status,
+      studyMode: t.studyMode,
+      activeHints: t.activeHints,
+      maxPlays: t.maxPlays,
+      errorLimit: t.errorLimit,
+      sentenceCount: t._count.sentences,
+      progress: t.progress && t.progress.length > 0 ? t.progress[0] : null,
       createdAt: t.createdAt,
     }));
+  }
+
+  // Admin: Get Topic Details for Edit
+  async getAdminTopic(id: string) {
+    const topic = await this.prisma.listeningTopic.findUnique({
+      where: { id },
+      include: {
+        sentences: {
+          orderBy: { order: 'asc' },
+        },
+      },
+    });
+
+    if (!topic) {
+      throw new NotFoundException(`Listening topic with ID ${id} not found`);
+    }
+
+    return topic;
   }
 
   // Gemini audio processing & transcription
   async autoTranscribe(dto: AutoTranscribeDto) {
     let audioBuffer: Buffer;
     let mimeType: string;
+    let convertedAudioUrl: string | undefined;
+    let convertedAudioPublicId: string | undefined;
 
     if (dto.youtubeUrl) {
       const ytData = await this.downloadYoutubeAudio(dto.youtubeUrl);
       audioBuffer = ytData.buffer;
       mimeType = ytData.mimeType;
+
+      // Convert YouTube audio to Cloudinary hosted audio file
+      try {
+        const uploaded = await this.cloudinaryService.uploadAudio(audioBuffer);
+        convertedAudioUrl = uploaded.url;
+        convertedAudioPublicId = uploaded.publicId;
+      } catch (uploadErr) {
+        console.warn('Failed to upload converted YouTube audio to Cloudinary:', uploadErr);
+      }
     } else if (dto.audioUrl) {
       const response = await fetch(dto.audioUrl);
       if (!response.ok) {
@@ -385,6 +423,8 @@ export class ListeningService {
           return {
             transcript: fullTranscript,
             sentences,
+            audioUrl: convertedAudioUrl,
+            audioPublicId: convertedAudioPublicId,
           };
         } catch (err) {
           lastError = err;
@@ -440,28 +480,50 @@ export class ListeningService {
     });
   }
 
-  // Helper: Download audio from YouTube
+  // Helper: Download audio from YouTube with multi-method fallbacks
   private async downloadYoutubeAudio(youtubeUrl: string): Promise<{ buffer: Buffer; mimeType: string }> {
+    // 1. Primary extractor: youtube-dl-exec (yt-dlp)
+    try {
+      const streamUrlOutput = await youtubedl(youtubeUrl, {
+        getUrl: true,
+        format: 'bestaudio',
+        noCheckCertificates: true,
+        noWarnings: true,
+      });
+
+      if (streamUrlOutput) {
+        const streamUrl = String(streamUrlOutput).trim().split('\n')[0];
+        const res = await fetch(streamUrl);
+        if (res.ok) {
+          const ab = await res.arrayBuffer();
+          return {
+            buffer: Buffer.from(ab),
+            mimeType: res.headers.get('content-type') || 'audio/webm',
+          };
+        }
+      }
+    } catch (ytDlpError: any) {
+      console.warn('youtube-dl-exec stream extraction warning:', ytDlpError?.message || ytDlpError);
+    }
+
+    // 2. Secondary fallback: @distube/ytdl-core
     try {
       const info = await ytdl.getInfo(youtubeUrl);
       const format = ytdl.chooseFormat(info.formats, { filter: 'audioonly', quality: 'highestaudio' });
-      if (!format || !format.url) {
-        throw new Error('No valid audio stream found for this video');
+      if (format && format.url) {
+        const response = await fetch(format.url);
+        if (response.ok) {
+          const arrayBuffer = await response.arrayBuffer();
+          return {
+            buffer: Buffer.from(arrayBuffer),
+            mimeType: format.mimeType || 'audio/webm',
+          };
+        }
       }
-
-      // Fetch CDN stream
-      const response = await fetch(format.url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch stream: ${response.statusText}`);
-      }
-
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      const mimeType = format.mimeType || 'audio/webm';
-
-      return { buffer, mimeType };
-    } catch (err) {
-      throw new Error(`YouTube stream download error: ${err.message}`);
+    } catch (ytdlError: any) {
+      console.warn('ytdl-core fallback warning:', ytdlError?.message || ytdlError);
     }
+
+    throw new BadRequestException('Failed to download YouTube audio stream. Please verify that the YouTube video URL is valid and public.');
   }
 }

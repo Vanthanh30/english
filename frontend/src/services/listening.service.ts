@@ -160,8 +160,8 @@ export const listeningService = {
     });
   },
 
-  async autoTranscribe(data: { audioUrl?: string; youtubeUrl?: string }): Promise<{ transcript: string; sentences: Omit<ListeningSentence, "id" | "topicId">[] }> {
-    return listeningRequest<{ transcript: string; sentences: Omit<ListeningSentence, "id" | "topicId">[] }>("/admin/listening-topics/auto-transcribe", {
+  async autoTranscribe(data: { audioUrl?: string; youtubeUrl?: string }): Promise<{ transcript: string; sentences: Omit<ListeningSentence, "id" | "topicId">[]; audioUrl?: string; audioPublicId?: string }> {
+    return listeningRequest<{ transcript: string; sentences: Omit<ListeningSentence, "id" | "topicId">[]; audioUrl?: string; audioPublicId?: string }>("/admin/listening-topics/auto-transcribe", {
       method: "POST",
       body: JSON.stringify(data),
     });

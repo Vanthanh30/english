@@ -83,7 +83,19 @@ export default function CreateListeningTopicPage() {
 
       setTranscript(result.transcript);
       setSentences(result.sentences);
-      setSuccess("Transcription completed successfully!");
+
+      if (result.audioUrl) {
+        setAudioUrl(result.audioUrl);
+      }
+      if (result.audioPublicId) {
+        setAudioPublicId(result.audioPublicId);
+      }
+
+      setSuccess(
+        sourceType === "youtube"
+          ? "YouTube video successfully converted to hosted audio & transcribed!"
+          : "Audio transcribed successfully!"
+      );
     } catch (err: any) {
       setError(err.message || "Failed to transcribe audio. Ensure Gemini API key is valid.");
     } finally {
