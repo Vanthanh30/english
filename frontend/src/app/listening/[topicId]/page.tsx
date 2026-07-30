@@ -58,6 +58,7 @@ export default function StudentListeningExercisePage() {
   // Fill in the Blank State
   const [blankWords, setBlankWords] = useState<BlankWord[]>([]);
   const [isBlankCorrect, setIsBlankCorrect] = useState(false);
+  const [hasCheckedWrong, setHasCheckedWrong] = useState(false);
 
   // Statistics
   const [totalErrors, setTotalErrors] = useState(0);
@@ -375,6 +376,7 @@ export default function StudentListeningExercisePage() {
     // Reset typing states
     setTypedText("");
     setIsFullCorrect(false);
+    setHasCheckedWrong(false);
     setErrorCount(0);
     setListenedCount(0);
     setIsAudioLocked(false);
@@ -408,6 +410,7 @@ export default function StudentListeningExercisePage() {
   const handleFullTyping = (value: string) => {
     if (isFullCorrect || isAnswerRevealed) return;
     if (isHintMenuOpen) setIsHintMenuOpen(false);
+    if (hasCheckedWrong) setHasCheckedWrong(false);
     setTypedText(value);
   };
 
@@ -415,10 +418,12 @@ export default function StudentListeningExercisePage() {
   const handleBlankWordChange = (idx: number, val: string) => {
     if (isBlankCorrect || isAnswerRevealed) return;
     if (isHintMenuOpen) setIsHintMenuOpen(false);
+    if (hasCheckedWrong) setHasCheckedWrong(false);
     const list = [...blankWords];
     const item = list[idx];
     if (item) {
       item.value = val;
+      item.isCorrect = false; // Reset checked status on edit so input immediately returns to default style
       setBlankWords(list);
     }
   };
@@ -453,8 +458,10 @@ export default function StudentListeningExercisePage() {
 
     if (isCorrect) {
       setIsFullCorrect(true);
+      setHasCheckedWrong(false);
       markSentenceComplete();
     } else {
+      setHasCheckedWrong(true);
       const newErrors = errorCount + 1;
       setErrorCount(newErrors);
       setTotalErrors((prev) => prev + 1);
@@ -486,8 +493,10 @@ export default function StudentListeningExercisePage() {
 
     if (isAllCorrect) {
       setIsBlankCorrect(true);
+      setHasCheckedWrong(false);
       markSentenceComplete();
     } else {
+      setHasCheckedWrong(true);
       const newErrors = errorCount + 1;
       setErrorCount(newErrors);
       setTotalErrors((prev) => prev + 1);
@@ -833,7 +842,7 @@ export default function StudentListeningExercisePage() {
                         const hasTyped = typedText.length > globalIdx;
                         const isCharCorrect = hasTyped && typedText[globalIdx]?.toLowerCase() === char.toLowerCase();
 
-                        const colorStyle = (showErrorHighlight && isHintsUnlocked)
+                        const colorStyle = (showErrorHighlight && isHintsUnlocked && hasCheckedWrong)
                           ? isCharCorrect
                             ? "#16a34a"
                             : hasTyped
@@ -969,7 +978,7 @@ export default function StudentListeningExercisePage() {
                     );
                   }
 
-                  const isIncorrect = showErrorHighlight && isHintsUnlocked && item.value.trim() !== "" && !item.isCorrect;
+                  const isIncorrect = showErrorHighlight && isHintsUnlocked && hasCheckedWrong && item.value.trim() !== "" && !item.isCorrect;
                   const inputWidth = Math.max(72, Math.min(180, item.word.length * 13 + 30));
 
                   return (
