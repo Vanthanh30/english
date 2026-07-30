@@ -24,6 +24,30 @@ function slugify(text: string): string {
     .replace(/\s+/g, '-');
 }
 
+async function generateUniqueSlug(prisma: PrismaService, title: string, excludeId?: string): Promise<string> {
+  const base = slugify(title) || 'listening-exercise';
+  let candidate = base;
+  let attempts = 0;
+
+  while (attempts < 10) {
+    const existing = await prisma.listeningTopic.findFirst({
+      where: {
+        slug: candidate,
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+    });
+
+    if (!existing) {
+      return candidate;
+    }
+
+    attempts++;
+    candidate = `${base}-${Date.now().toString().slice(-4)}-${Math.random().toString(36).substring(2, 6)}`;
+  }
+
+  return `${base}-${Date.now()}`;
+}
+
 @Injectable()
 export class ListeningService {
   private readonly genAI: GoogleGenerativeAI;
@@ -39,15 +63,7 @@ export class ListeningService {
 
   // Admin: CRUD - Create
   async createTopic(dto: CreateListeningTopicDto) {
-    let slug = slugify(dto.title);
-    
-    // Ensure slug uniqueness
-    const exists = await this.prisma.listeningTopic.findUnique({
-      where: { slug },
-    });
-    if (exists) {
-      slug = `${slug}-${Date.now().toString().slice(-4)}`;
-    }
+    const slug = await generateUniqueSlug(this.prisma, dto.title);
 
     let transcript = dto.transcript || '';
     let sentences = dto.sentences || [];
@@ -157,14 +173,7 @@ export class ListeningService {
     const data: any = {};
     if (dto.title !== undefined) {
       data.title = dto.title;
-      data.slug = slugify(dto.title);
-      // Ensure unique slug
-      const exists = await this.prisma.listeningTopic.findFirst({
-        where: { slug: data.slug, id: { not: id } },
-      });
-      if (exists) {
-        data.slug = `${data.slug}-${Date.now().toString().slice(-4)}`;
-      }
+      data.slug = await generateUniqueSlug(this.prisma, dto.title, id);
     }
     if (dto.description !== undefined) data.description = dto.description;
     if (updatedAudioUrl !== undefined) data.audioUrl = updatedAudioUrl;
@@ -482,24 +491,33 @@ export class ListeningService {
 
   // Helper: Download audio from YouTube with multi-method fallbacks
   private async downloadYoutubeAudio(youtubeUrl: string): Promise<{ buffer: Buffer; mimeType: string }> {
-    // 1. Primary extractor: youtube-dl-exec (yt-dlp)
+    // 1. Primary extractor: youtube-dl-exec (yt-dlp with node JS runtime)
     try {
       const streamUrlOutput = await youtubedl(youtubeUrl, {
         getUrl: true,
         format: 'bestaudio',
+        jsRuntimes: 'node',
         noCheckCertificates: true,
         noWarnings: true,
       });
 
       if (streamUrlOutput) {
-        const streamUrl = String(streamUrlOutput).trim().split('\n')[0];
-        const res = await fetch(streamUrl);
-        if (res.ok) {
-          const ab = await res.arrayBuffer();
-          return {
-            buffer: Buffer.from(ab),
-            mimeType: res.headers.get('content-type') || 'audio/webm',
-          };
+        const lines = String(streamUrlOutput).trim().split('\n');
+        const streamUrl = lines.find((l) => l.trim().startsWith('http'));
+
+        if (streamUrl) {
+          const res = await fetch(streamUrl.trim(), {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            },
+          });
+          if (res.ok) {
+            const ab = await res.arrayBuffer();
+            return {
+              buffer: Buffer.from(ab),
+              mimeType: res.headers.get('content-type') || 'audio/mp4',
+            };
+          }
         }
       }
     } catch (ytDlpError: any) {
@@ -509,14 +527,19 @@ export class ListeningService {
     // 2. Secondary fallback: @distube/ytdl-core
     try {
       const info = await ytdl.getInfo(youtubeUrl);
-      const format = ytdl.chooseFormat(info.formats, { filter: 'audioonly', quality: 'highestaudio' });
+      const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
+      const format = audioFormats.find((f) => f.url);
       if (format && format.url) {
-        const response = await fetch(format.url);
+        const response = await fetch(format.url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          },
+        });
         if (response.ok) {
           const arrayBuffer = await response.arrayBuffer();
           return {
             buffer: Buffer.from(arrayBuffer),
-            mimeType: format.mimeType || 'audio/webm',
+            mimeType: format.mimeType || 'audio/mp4',
           };
         }
       }
